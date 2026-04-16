@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "migrate": "node src/scripts/migrate.js",
     "seed": "node src/scripts/seed.js",
     "db:test": "node src/scripts/test-connection.js"
   },
