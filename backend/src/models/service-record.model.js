@@ -28,7 +28,7 @@ export const serviceRecordModel = {
         description,
         cost,
         status,
-        service_date AS serviceDate,
+        DATE_FORMAT(service_date, '%Y-%m-%d') AS serviceDate,
         created_at AS createdAt,
         updated_at AS updatedAt
       FROM service_records
@@ -46,7 +46,7 @@ export const serviceRecordModel = {
           description,
           cost,
           status,
-          service_date AS serviceDate,
+          DATE_FORMAT(service_date, '%Y-%m-%d') AS serviceDate,
           created_at AS createdAt,
           updated_at AS updatedAt
         FROM service_records

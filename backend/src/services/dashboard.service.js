@@ -6,6 +6,10 @@ import { userModel } from "../models/user.model.js";
 import { average } from "../utils/dashboard.js";
 import { sortBy } from "../utils/sort.js";
 
+function sum(values = []) {
+  return values.reduce((total, value) => total + Number(value || 0), 0);
+}
+
 export const dashboardService = {
   async getAdminDashboard() {
     const [users, appointments, serviceRecords] = await Promise.all([
@@ -16,10 +20,15 @@ export const dashboardService = {
 
     return {
       users: users.length,
+      activeUsers: users.filter((item) => item.isActive).length,
+      inactiveUsers: users.filter((item) => !item.isActive).length,
       artisans: users.filter((item) => item.role === "artisan").length,
       customers: users.filter((item) => item.role === "customer").length,
       appointments: appointments.length,
       services: serviceRecords.length,
+      pendingAppointments: appointments.filter((item) => item.status === "pending").length,
+      confirmedAppointments: appointments.filter((item) => item.status === "confirmed").length,
+      revenue: sum(serviceRecords.map((item) => item.cost)),
     };
   },
 
@@ -47,6 +56,7 @@ export const dashboardService = {
       appointmentBreakdown,
       averageRating: average(feedback.map((item) => item.rating)),
       totalServices: serviceRecords.length,
+      totalRevenue: sum(serviceRecords.map((item) => item.cost)),
     };
   },
 
@@ -79,7 +89,10 @@ export const dashboardService = {
       customers: artisanCustomers.length,
       appointments: artisanAppointments.length,
       services: artisanServices.length,
+      pendingAppointments: artisanAppointments.filter((item) => item.status === "pending").length,
+      confirmedAppointments: artisanAppointments.filter((item) => item.status === "confirmed").length,
       averageRating: average(artisanFeedback.map((item) => item.rating)),
+      revenue: sum(artisanServices.map((item) => item.cost)),
       upcomingAppointments: sortBy(artisanAppointments, "scheduledDate", "asc").slice(0, 5),
     };
   },
@@ -95,8 +108,10 @@ export const dashboardService = {
 
     return {
       appointments: customerAppointments.length,
+      upcomingAppointments: customerAppointments.filter((item) => ["pending", "confirmed"].includes(item.status)).length,
       completed: customerAppointments.filter((item) => item.status === "completed").length,
       feedbacks: customerFeedback.length,
+      latestAppointments: sortBy(customerAppointments, "scheduledDate", "desc").slice(0, 5),
     };
   },
 };

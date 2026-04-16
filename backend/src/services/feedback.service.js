@@ -3,6 +3,7 @@ import { HTTP_STATUS } from "../constants/http-status.js";
 import { MESSAGES } from "../constants/messages.js";
 import { createId } from "../utils/id.js";
 import { feedbackModel } from "../models/feedback.model.js";
+import { domainService } from "./domain.service.js";
 import { sortBy } from "../utils/sort.js";
 
 export const feedbackService = {
@@ -31,6 +32,18 @@ export const feedbackService = {
       throw new AppError("Rating must be between 1 and 5.", HTTP_STATUS.BAD_REQUEST);
     }
 
+    await domainService.ensureArtisanExists(payload.artisanId);
+    await domainService.ensureCustomerUserExists(payload.customerUserId);
+    await domainService.ensureFeedbackAppointment({
+      appointmentId: payload.appointmentId,
+      artisanId: payload.artisanId,
+      customerUserId: payload.customerUserId,
+    });
+    await domainService.ensureFeedbackNotDuplicated({
+      appointmentId: payload.appointmentId,
+      customerUserId: payload.customerUserId,
+    });
+
     return feedbackModel.create({
       id: createId(),
       artisanId: payload.artisanId,
@@ -43,8 +56,40 @@ export const feedbackService = {
   },
 
   async updateFeedback(id, payload) {
+    const existing = await feedbackModel.findById(id);
+    if (!existing) {
+      throw new AppError(MESSAGES.FEEDBACK_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const artisanId = payload.artisanId || existing.artisanId;
+    const customerUserId = payload.customerUserId || existing.customerUserId;
+    const appointmentId = payload.appointmentId === undefined ? existing.appointmentId : payload.appointmentId;
+
+    if (payload.rating !== undefined) {
+      const rating = Number(payload.rating);
+      if (Number.isNaN(rating) || rating < 1 || rating > 5) {
+        throw new AppError("Rating must be between 1 and 5.", HTTP_STATUS.BAD_REQUEST);
+      }
+    }
+
+    await domainService.ensureArtisanExists(artisanId);
+    await domainService.ensureCustomerUserExists(customerUserId);
+    await domainService.ensureFeedbackAppointment({
+      appointmentId,
+      artisanId,
+      customerUserId,
+    });
+    await domainService.ensureFeedbackNotDuplicated({
+      appointmentId,
+      customerUserId,
+      excludeFeedbackId: id,
+    });
+
     const updated = await feedbackModel.updateById(id, {
       ...payload,
+      artisanId,
+      customerUserId,
+      appointmentId,
       comment: typeof payload.comment === "string" ? payload.comment.trim() || null : payload.comment,
     });
 

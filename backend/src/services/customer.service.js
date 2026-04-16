@@ -3,6 +3,7 @@ import { HTTP_STATUS } from "../constants/http-status.js";
 import { MESSAGES } from "../constants/messages.js";
 import { createId } from "../utils/id.js";
 import { customerModel } from "../models/customer.model.js";
+import { domainService } from "./domain.service.js";
 import { sortBy } from "../utils/sort.js";
 
 export const customerService = {
@@ -29,11 +30,25 @@ export const customerService = {
       throw new AppError("Artisan and customer name are required.", HTTP_STATUS.BAD_REQUEST);
     }
 
+    await domainService.ensureArtisanExists(payload.artisanId);
+
+    const normalizedEmail = payload.email?.trim()?.toLowerCase() || null;
+    if (normalizedEmail) {
+      const existingCustomers = await customerModel.findAll();
+      const duplicate = existingCustomers.find(
+        (item) => item.artisanId === payload.artisanId && item.email?.toLowerCase() === normalizedEmail,
+      );
+
+      if (duplicate) {
+        throw new AppError(MESSAGES.DUPLICATE_CUSTOMER_EMAIL, HTTP_STATUS.CONFLICT);
+      }
+    }
+
     return customerModel.create({
       id: createId(),
       artisanId: payload.artisanId,
       name: payload.name.trim(),
-      email: payload.email?.trim() || null,
+      email: normalizedEmail,
       phone: payload.phone?.trim() || null,
       address: payload.address?.trim() || null,
       notes: payload.notes?.trim() || null,
@@ -43,10 +58,34 @@ export const customerService = {
   },
 
   async updateCustomer(id, payload) {
+    const existingCustomer = await customerModel.findById(id);
+    if (!existingCustomer) {
+      throw new AppError(MESSAGES.CUSTOMER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const artisanId = payload.artisanId || existingCustomer.artisanId;
+    await domainService.ensureArtisanExists(artisanId);
+
+    const normalizedEmail =
+      typeof payload.email === "string" ? payload.email.trim().toLowerCase() || null : payload.email;
+
+    if (normalizedEmail) {
+      const existingCustomers = await customerModel.findAll();
+      const duplicate = existingCustomers.find(
+        (item) =>
+          item.id !== id && item.artisanId === artisanId && item.email?.toLowerCase() === normalizedEmail,
+      );
+
+      if (duplicate) {
+        throw new AppError(MESSAGES.DUPLICATE_CUSTOMER_EMAIL, HTTP_STATUS.CONFLICT);
+      }
+    }
+
     const customer = await customerModel.updateById(id, {
       ...payload,
+      artisanId,
       name: payload.name?.trim() || payload.name,
-      email: typeof payload.email === "string" ? payload.email.trim() || null : payload.email,
+      email: normalizedEmail,
       phone: typeof payload.phone === "string" ? payload.phone.trim() || null : payload.phone,
       address: typeof payload.address === "string" ? payload.address.trim() || null : payload.address,
       notes: typeof payload.notes === "string" ? payload.notes.trim() || null : payload.notes,

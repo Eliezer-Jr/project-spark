@@ -6,6 +6,7 @@ import { userModel } from "../models/user.model.js";
 import { sendWelcomeEmail } from "../mail/mailer.js";
 import { createId } from "../utils/id.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
+import { createAccessToken } from "../utils/token.js";
 
 function sanitizeUser(user) {
   const { passwordHash, ...safeUser } = user;
@@ -13,11 +14,6 @@ function sanitizeUser(user) {
     ...safeUser,
     isActive: Boolean(safeUser.isActive),
   };
-}
-
-function createAuthToken(user) {
-  const payload = `${user.id}:${user.email}:${Date.now()}`;
-  return Buffer.from(payload).toString("base64url");
 }
 
 export const authService = {
@@ -37,7 +33,7 @@ export const authService = {
     }
 
     return {
-      token: createAuthToken(user),
+      token: createAccessToken(user),
       user: sanitizeUser(user),
     };
   },
@@ -76,7 +72,7 @@ export const authService = {
     await sendWelcomeEmail(user);
 
     return {
-      token: createAuthToken(user),
+      token: createAccessToken(user),
       user: sanitizeUser(user),
     };
   },

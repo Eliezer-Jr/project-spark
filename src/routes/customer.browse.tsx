@@ -2,11 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, MapPin, Star, Wrench } from "lucide-react";
+import { formatDateLabel } from "@/lib/crm-helpers";
+import { Search, MapPin, Star, Wrench, CalendarDays, BriefcaseBusiness } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 
@@ -21,14 +23,18 @@ export const Route = createFileRoute("/customer/browse")({
 function BrowseContent() {
   const [artisans, setArtisans] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [statsByArtisan, setStatsByArtisan] = useState<Record<string, { rating: number; reviews: number; jobs: number; nextDate: string | null }>>({});
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
 
   useEffect(() => {
     const load = async () => {
-      const [rolesRes, catRes] = await Promise.all([
+      const [rolesRes, catRes, feedbackRes, serviceRes, appointmentRes] = await Promise.all([
         db.from("user_roles").select("user_id").eq("role", "artisan"),
         db.from("service_categories").select("*"),
+        db.from("feedback").select("*"),
+        db.from("service_records").select("*"),
+        db.from("appointments").select("*"),
       ]);
       const artisanIds = ((rolesRes.data || []) as any[]).map((r: any) => r.user_id);
       if (artisanIds.length > 0) {
@@ -36,6 +42,28 @@ function BrowseContent() {
         setArtisans((data || []) as any[]);
       }
       setCategories((catRes.data || []) as any[]);
+
+      const nextStats = artisanIds.reduce<Record<string, { rating: number; reviews: number; jobs: number; nextDate: string | null }>>(
+        (acc, artisanId) => {
+          const feedback = ((feedbackRes.data || []) as any[]).filter((item) => item.artisan_id === artisanId);
+          const jobs = ((serviceRes.data || []) as any[]).filter((item) => item.artisan_id === artisanId).length;
+          const upcoming = ((appointmentRes.data || []) as any[])
+            .filter((item) => item.artisan_id === artisanId && (item.status === "pending" || item.status === "confirmed"))
+            .sort((left, right) => `${left.scheduled_date} ${left.scheduled_time}`.localeCompare(`${right.scheduled_date} ${right.scheduled_time}`))[0];
+
+          acc[artisanId] = {
+            rating: feedback.length ? feedback.reduce((sum, item) => sum + item.rating, 0) / feedback.length : 0,
+            reviews: feedback.length,
+            jobs,
+            nextDate: upcoming?.scheduled_date ?? null,
+          };
+
+          return acc;
+        },
+        {},
+      );
+
+      setStatsByArtisan(nextStats);
     };
     load();
   }, []);
@@ -82,10 +110,26 @@ function BrowseContent() {
                   {a.specialization && <p className="text-xs text-muted-foreground">{a.specialization}</p>}
                 </div>
               </div>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <Star className="h-3 w-3" />
+                  {statsByArtisan[a.id]?.reviews ? `${statsByArtisan[a.id].rating.toFixed(1)} (${statsByArtisan[a.id].reviews})` : "New"}
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <BriefcaseBusiness className="h-3 w-3" />
+                  {statsByArtisan[a.id]?.jobs ?? 0} jobs
+                </Badge>
+                {statsByArtisan[a.id]?.nextDate && (
+                  <Badge variant="outline" className="gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    Next: {formatDateLabel(statsByArtisan[a.id].nextDate as string)}
+                  </Badge>
+                )}
+              </div>
               {a.location && <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2"><MapPin className="h-3.5 w-3.5" />{a.location}</div>}
               {a.bio && <p className="text-sm text-muted-foreground line-clamp-2">{a.bio}</p>}
-              <Link to="/customer/appointments" className="mt-3 block">
-                <Button variant="outline" size="sm" className="w-full">Book Appointment</Button>
+              <Link to="/customer/appointments" search={{ artisanId: a.id }} className="mt-3 block">
+                <Button variant="outline" size="sm" className="w-full">Book With This Artisan</Button>
               </Link>
             </div>
           ))}

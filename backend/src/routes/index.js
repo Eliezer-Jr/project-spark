@@ -7,11 +7,13 @@ import feedbackRoutes from "./feedback.routes.js";
 import healthRoutes from "./health.routes.js";
 import serviceCategoryRoutes from "./service-category.routes.js";
 import serviceRecordRoutes from "./service-record.routes.js";
+import systemRoutes from "./system.routes.js";
 import userRoutes from "./user.routes.js";
 
 const router = Router();
 
 router.use("/health", healthRoutes);
+router.use("/system", systemRoutes);
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/service-categories", serviceCategoryRoutes);

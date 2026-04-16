@@ -1,10 +1,12 @@
 import { HTTP_STATUS } from "../constants/http-status.js";
 import { sendResponse } from "../utils/api-response.js";
 import { serviceCategoryService } from "../services/service-category.service.js";
+import { paginate } from "../utils/pagination.js";
 
-export async function getServiceCategories(_req, res) {
+export async function getServiceCategories(req, res) {
   const categories = await serviceCategoryService.getCategories();
-  return sendResponse(res, HTTP_STATUS.OK, "Service categories fetched successfully.", categories);
+  const result = paginate(categories, req.query);
+  return sendResponse(res, HTTP_STATUS.OK, "Service categories fetched successfully.", result.data, result.meta);
 }
 
 export async function createServiceCategory(req, res) {

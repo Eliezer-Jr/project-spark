@@ -1,23 +1,86 @@
+import { MESSAGES } from "../constants/messages.js";
 import { HTTP_STATUS } from "../constants/http-status.js";
+import { AppError } from "../exceptions/AppError.js";
+import { appointmentModel } from "../models/appointment.model.js";
 import { appointmentService } from "../services/appointment.service.js";
 import { sendResponse } from "../utils/api-response.js";
+import { paginate } from "../utils/pagination.js";
 
 export async function getAppointments(req, res) {
-  const appointments = await appointmentService.getAppointments(req.query);
-  return sendResponse(res, HTTP_STATUS.OK, "Appointments fetched successfully.", appointments);
+  const filters = { ...req.query };
+
+  if (req.auth.role === "artisan") {
+    filters.artisanId = req.auth.userId;
+  }
+
+  if (req.auth.role === "customer") {
+    filters.customerUserId = req.auth.userId;
+  }
+
+  const appointments = await appointmentService.getAppointments(filters);
+  const result = paginate(appointments, req.query);
+  return sendResponse(res, HTTP_STATUS.OK, "Appointments fetched successfully.", result.data, result.meta);
 }
 
 export async function createAppointment(req, res) {
-  const appointment = await appointmentService.createAppointment(req.body);
+  const payload = { ...req.body };
+
+  if (req.auth.role === "artisan") {
+    payload.artisanId = req.auth.userId;
+  }
+
+  if (req.auth.role === "customer") {
+    payload.customerUserId = req.auth.userId;
+    payload.status = "pending";
+  }
+
+  const appointment = await appointmentService.createAppointment(payload);
   return sendResponse(res, HTTP_STATUS.CREATED, "Appointment created successfully.", appointment);
 }
 
 export async function updateAppointment(req, res) {
-  const appointment = await appointmentService.updateAppointment(req.params.id, req.body);
+  const existing = await appointmentModel.findById(req.params.id);
+  if (!existing) {
+    throw new AppError(MESSAGES.APPOINTMENT_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+  }
+  if (req.auth.role === "artisan" && existing.artisanId !== req.auth.userId) {
+    throw new AppError(MESSAGES.ACCESS_DENIED, HTTP_STATUS.FORBIDDEN);
+  }
+  if (req.auth.role === "customer" && existing.customerUserId !== req.auth.userId) {
+    throw new AppError(MESSAGES.ACCESS_DENIED, HTTP_STATUS.FORBIDDEN);
+  }
+
+  const payload = { ...req.body };
+
+  if (req.auth.role === "artisan") {
+    payload.artisanId = req.auth.userId;
+  }
+
+  if (req.auth.role === "customer") {
+    payload.artisanId = existing.artisanId;
+    payload.customerUserId = req.auth.userId;
+
+    if (payload.status && payload.status !== "cancelled") {
+      throw new AppError(MESSAGES.ACCESS_DENIED, HTTP_STATUS.FORBIDDEN);
+    }
+  }
+
+  const appointment = await appointmentService.updateAppointment(req.params.id, payload);
   return sendResponse(res, HTTP_STATUS.OK, "Appointment updated successfully.", appointment);
 }
 
 export async function deleteAppointment(req, res) {
+  const existing = await appointmentModel.findById(req.params.id);
+  if (!existing) {
+    throw new AppError(MESSAGES.APPOINTMENT_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+  }
+  if (req.auth.role === "artisan" && existing.artisanId !== req.auth.userId) {
+    throw new AppError(MESSAGES.ACCESS_DENIED, HTTP_STATUS.FORBIDDEN);
+  }
+  if (req.auth.role === "customer" && existing.customerUserId !== req.auth.userId) {
+    throw new AppError(MESSAGES.ACCESS_DENIED, HTTP_STATUS.FORBIDDEN);
+  }
+
   const appointment = await appointmentService.deleteAppointment(req.params.id);
   return sendResponse(res, HTTP_STATUS.OK, "Appointment deleted successfully.", appointment);
 }

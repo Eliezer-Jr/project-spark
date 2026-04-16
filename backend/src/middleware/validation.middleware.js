@@ -1,0 +1,243 @@
+import { HTTP_STATUS } from "../constants/http-status.js";
+import { APP_ROLES, APPOINTMENT_STATUSES, SERVICE_RECORD_STATUSES } from "../constraints/app.constraints.js";
+import { AppError } from "../exceptions/AppError.js";
+
+function isEmpty(value) {
+  return value == null || (typeof value === "string" && !value.trim());
+}
+
+function isProvided(value) {
+  return value !== undefined;
+}
+
+function ensure(condition, message) {
+  if (!condition) {
+    throw new AppError(message, HTTP_STATUS.UNPROCESSABLE_ENTITY);
+  }
+}
+
+function ensureEmail(value, message) {
+  ensure(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim()), message);
+}
+
+function ensureDate(value, message) {
+  ensure(/^\d{4}-\d{2}-\d{2}$/.test(String(value)), message);
+}
+
+function ensureTime(value, message) {
+  ensure(/^\d{2}:\d{2}(:\d{2})?$/.test(String(value)), message);
+}
+
+function ensureEnum(value, values, message) {
+  ensure(values.includes(value), message);
+}
+
+function ensureNonNegativeNumber(value, message) {
+  ensure(!Number.isNaN(Number(value)) && Number(value) >= 0, message);
+}
+
+function ensureBodyNotEmpty(body, message = "At least one field must be provided.") {
+  ensure(Object.keys(body || {}).length > 0, message);
+}
+
+export function validateLogin(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.email), "Email is required.");
+    ensure(!isEmpty(req.body.password), "Password is required.");
+    ensureEmail(req.body.email, "A valid email address is required.");
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateSignup(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.fullName), "Full name is required.");
+    ensure(!isEmpty(req.body.email), "Email is required.");
+    ensure(!isEmpty(req.body.password), "Password is required.");
+    ensureEmail(req.body.email, "A valid email address is required.");
+    ensure(String(req.body.password).length >= 6, "Password must be at least 6 characters.");
+    if (isProvided(req.body.role)) {
+      ensureEnum(req.body.role, APP_ROLES, "Role must be admin, artisan or customer.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateCategory(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.name), "Category name is required.");
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateCategoryPatch(req, _res, next) {
+  try {
+    ensureBodyNotEmpty(req.body);
+    if (isProvided(req.body.name)) {
+      ensure(!isEmpty(req.body.name), "Category name is required.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateCustomer(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.name), "Customer name is required.");
+    if (isProvided(req.body.email) && !isEmpty(req.body.email)) {
+      ensureEmail(req.body.email, "A valid customer email is required.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateCustomerPatch(req, _res, next) {
+  try {
+    ensureBodyNotEmpty(req.body);
+    if (isProvided(req.body.name)) {
+      ensure(!isEmpty(req.body.name), "Customer name is required.");
+    }
+    if (isProvided(req.body.email) && !isEmpty(req.body.email)) {
+      ensureEmail(req.body.email, "A valid customer email is required.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateServiceRecord(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.customerId), "Customer is required.");
+    ensure(!isEmpty(req.body.description), "Service description is required.");
+    ensure(!isEmpty(req.body.serviceDate), "Service date is required.");
+    ensureDate(req.body.serviceDate, "Service date must be in YYYY-MM-DD format.");
+    if (isProvided(req.body.cost) && !isEmpty(req.body.cost)) {
+      ensureNonNegativeNumber(req.body.cost, "Service cost must be a non-negative number.");
+    }
+    if (isProvided(req.body.status)) {
+      ensureEnum(req.body.status, SERVICE_RECORD_STATUSES, "Invalid service record status.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateServiceRecordPatch(req, _res, next) {
+  try {
+    ensureBodyNotEmpty(req.body);
+    if (isProvided(req.body.customerId)) {
+      ensure(!isEmpty(req.body.customerId), "Customer is required.");
+    }
+    if (isProvided(req.body.description)) {
+      ensure(!isEmpty(req.body.description), "Service description is required.");
+    }
+    if (isProvided(req.body.serviceDate)) {
+      ensure(!isEmpty(req.body.serviceDate), "Service date is required.");
+      ensureDate(req.body.serviceDate, "Service date must be in YYYY-MM-DD format.");
+    }
+    if (isProvided(req.body.cost) && !isEmpty(req.body.cost)) {
+      ensureNonNegativeNumber(req.body.cost, "Service cost must be a non-negative number.");
+    }
+    if (isProvided(req.body.status)) {
+      ensureEnum(req.body.status, SERVICE_RECORD_STATUSES, "Invalid service record status.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateAppointment(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.title), "Appointment title is required.");
+    ensure(!isEmpty(req.body.scheduledDate), "Scheduled date is required.");
+    ensure(!isEmpty(req.body.scheduledTime), "Scheduled time is required.");
+    ensureDate(req.body.scheduledDate, "Scheduled date must be in YYYY-MM-DD format.");
+    ensureTime(req.body.scheduledTime, "Scheduled time must be in HH:MM or HH:MM:SS format.");
+    if (isProvided(req.body.status)) {
+      ensureEnum(req.body.status, APPOINTMENT_STATUSES, "Invalid appointment status.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateAppointmentPatch(req, _res, next) {
+  try {
+    ensureBodyNotEmpty(req.body);
+    if (isProvided(req.body.title)) {
+      ensure(!isEmpty(req.body.title), "Appointment title is required.");
+    }
+    if (isProvided(req.body.scheduledDate)) {
+      ensure(!isEmpty(req.body.scheduledDate), "Scheduled date is required.");
+      ensureDate(req.body.scheduledDate, "Scheduled date must be in YYYY-MM-DD format.");
+    }
+    if (isProvided(req.body.scheduledTime)) {
+      ensure(!isEmpty(req.body.scheduledTime), "Scheduled time is required.");
+      ensureTime(req.body.scheduledTime, "Scheduled time must be in HH:MM or HH:MM:SS format.");
+    }
+    if (isProvided(req.body.status)) {
+      ensureEnum(req.body.status, APPOINTMENT_STATUSES, "Invalid appointment status.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateFeedback(req, _res, next) {
+  try {
+    const rating = Number(req.body.rating);
+    ensure(!Number.isNaN(rating), "Rating is required.");
+    ensure(rating >= 1 && rating <= 5, "Rating must be between 1 and 5.");
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateFeedbackPatch(req, _res, next) {
+  try {
+    ensureBodyNotEmpty(req.body);
+    if (isProvided(req.body.rating)) {
+      const rating = Number(req.body.rating);
+      ensure(!Number.isNaN(rating), "Rating is required.");
+      ensure(rating >= 1 && rating <= 5, "Rating must be between 1 and 5.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateProfileUpdate(req, _res, next) {
+  try {
+    const allowedFields = ["fullName", "phone", "location", "specialization", "bio", "avatarUrl"];
+    const hasKnownField = Object.keys(req.body || {}).some((field) => allowedFields.includes(field));
+    ensure(hasKnownField, "At least one valid profile field must be provided.");
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateUserStatusUpdate(req, _res, next) {
+  try {
+    ensure(typeof req.body?.isActive === "boolean", "isActive must be a boolean value.");
+    next();
+  } catch (error) {
+    next(error);
+  }
+}

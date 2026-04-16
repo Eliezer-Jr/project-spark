@@ -1,8 +1,10 @@
 import { AppError } from "../exceptions/AppError.js";
 import { HTTP_STATUS } from "../constants/http-status.js";
 import { MESSAGES } from "../constants/messages.js";
+import { SERVICE_RECORD_STATUSES } from "../constraints/app.constraints.js";
 import { createId } from "../utils/id.js";
 import { serviceRecordModel } from "../models/service-record.model.js";
+import { domainService } from "./domain.service.js";
 import { sortBy } from "../utils/sort.js";
 
 export const serviceRecordService = {
@@ -26,14 +28,29 @@ export const serviceRecordService = {
       throw new AppError("Artisan, customer, description and service date are required.", HTTP_STATUS.BAD_REQUEST);
     }
 
+    await domainService.ensureArtisanExists(payload.artisanId);
+    await domainService.ensureCustomerBelongsToArtisan(payload.customerId, payload.artisanId);
+    await domainService.ensureCategoryExists(payload.categoryId);
+
+    const cost =
+      payload.cost === undefined ? existing.cost : payload.cost == null || payload.cost === "" ? null : Number(payload.cost);
+    if (cost != null && (Number.isNaN(cost) || cost < 0)) {
+      throw new AppError("Service cost must be a non-negative number.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
+    }
+
+    const status = payload.status || "completed";
+    if (!SERVICE_RECORD_STATUSES.includes(status)) {
+      throw new AppError("Invalid service record status.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
+    }
+
     return serviceRecordModel.create({
       id: createId(),
       artisanId: payload.artisanId,
       customerId: payload.customerId,
       categoryId: payload.categoryId || null,
       description: payload.description.trim(),
-      cost: payload.cost == null || payload.cost === "" ? null : Number(payload.cost),
-      status: payload.status || "completed",
+      cost,
+      status,
       serviceDate: payload.serviceDate,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -41,10 +58,34 @@ export const serviceRecordService = {
   },
 
   async updateServiceRecord(id, payload) {
+    const existing = await serviceRecordModel.findById(id);
+    if (!existing) {
+      throw new AppError(MESSAGES.SERVICE_RECORD_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const artisanId = payload.artisanId || existing.artisanId;
+    const customerId = payload.customerId || existing.customerId;
+    const status = payload.status || existing.status;
+    const cost = payload.cost == null || payload.cost === "" ? null : Number(payload.cost);
+
+    await domainService.ensureArtisanExists(artisanId);
+    await domainService.ensureCustomerBelongsToArtisan(customerId, artisanId);
+    await domainService.ensureCategoryExists(payload.categoryId === undefined ? existing.categoryId : payload.categoryId);
+
+    if (cost != null && (Number.isNaN(cost) || cost < 0)) {
+      throw new AppError("Service cost must be a non-negative number.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
+    }
+
+    if (!SERVICE_RECORD_STATUSES.includes(status)) {
+      throw new AppError("Invalid service record status.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
+    }
+
     const updated = await serviceRecordModel.updateById(id, {
       ...payload,
+      artisanId,
+      customerId,
       description: payload.description?.trim() || payload.description,
-      cost: payload.cost == null || payload.cost === "" ? null : Number(payload.cost),
+      cost: payload.cost === undefined ? undefined : cost,
     });
 
     if (!updated) {

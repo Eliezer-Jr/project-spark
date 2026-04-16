@@ -30,8 +30,8 @@ export const appointmentModel = {
         category_id AS categoryId,
         title,
         description,
-        scheduled_date AS scheduledDate,
-        scheduled_time AS scheduledTime,
+        DATE_FORMAT(scheduled_date, '%Y-%m-%d') AS scheduledDate,
+        TIME_FORMAT(scheduled_time, '%H:%i:%s') AS scheduledTime,
         status,
         created_at AS createdAt,
         updated_at AS updatedAt
@@ -50,8 +50,8 @@ export const appointmentModel = {
           category_id AS categoryId,
           title,
           description,
-          scheduled_date AS scheduledDate,
-          scheduled_time AS scheduledTime,
+          DATE_FORMAT(scheduled_date, '%Y-%m-%d') AS scheduledDate,
+          TIME_FORMAT(scheduled_time, '%H:%i:%s') AS scheduledTime,
           status,
           created_at AS createdAt,
           updated_at AS updatedAt

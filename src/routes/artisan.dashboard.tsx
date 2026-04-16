@@ -3,7 +3,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
-import { Users, Calendar, Wrench, Star } from "lucide-react";
+import { formatCurrency, formatDateLabel, formatTimeLabel, getStatusClasses } from "@/lib/crm-helpers";
+import { Users, Calendar, Wrench, Star, Wallet, Clock3 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
@@ -24,7 +25,7 @@ function ArtisanDashboard() {
 
 function DashboardContent() {
   const { user, profile } = useAuth();
-  const [stats, setStats] = useState({ customers: 0, appointments: 0, services: 0, avgRating: 0 });
+  const [stats, setStats] = useState({ customers: 0, appointments: 0, services: 0, avgRating: 0, revenue: 0, pending: 0 });
   const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
 
   useEffect(() => {
@@ -37,14 +38,18 @@ function DashboardContent() {
         db.from("feedback").select("rating").eq("artisan_id", user.id),
       ]);
       const ratings = (fbRes.data || []) as any[];
+      const services = (svcRes.data || []) as any[];
+      const appointments = (apptRes.data || []) as any[];
       const avg = ratings.length ? ratings.reduce((s: number, r: any) => s + r.rating, 0) / ratings.length : 0;
       setStats({
         customers: custRes.count || 0,
-        appointments: (apptRes.data || []).length,
+        appointments: appointments.length,
         services: svcRes.count || 0,
         avgRating: Math.round(avg * 10) / 10,
+        revenue: services.reduce((sum: number, service: any) => sum + Number(service.cost || 0), 0),
+        pending: appointments.filter((appointment: any) => appointment.status === "pending").length,
       });
-      setRecentAppointments((apptRes.data || []) as any[]);
+      setRecentAppointments(appointments);
     };
     load();
   }, [user]);
@@ -56,7 +61,27 @@ function DashboardContent() {
         <StatCard title="Customers" value={stats.customers} icon={Users} />
         <StatCard title="Upcoming Appointments" value={stats.appointments} icon={Calendar} />
         <StatCard title="Services Completed" value={stats.services} icon={Wrench} />
-        <StatCard title="Avg Rating" value={stats.avgRating || "—"} icon={Star} />
+        <StatCard title="Avg Rating" value={stats.avgRating || "-"} icon={Star} />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Wallet className="h-4 w-4" />
+            Revenue Snapshot
+          </div>
+          <p className="mt-2 text-3xl font-semibold text-card-foreground">{formatCurrency(stats.revenue)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Based on all logged service records.</p>
+        </div>
+
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock3 className="h-4 w-4" />
+            Attention Needed
+          </div>
+          <p className="mt-2 text-3xl font-semibold text-card-foreground">{stats.pending}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Pending appointments waiting for confirmation.</p>
+        </div>
       </div>
 
       <div className="mt-8">
@@ -72,13 +97,11 @@ function DashboardContent() {
               <div key={appt.id} className="flex items-center justify-between rounded-lg border bg-card p-4">
                 <div>
                   <p className="font-medium text-card-foreground">{appt.title}</p>
-                  <p className="text-sm text-muted-foreground">{appt.scheduled_date} at {appt.scheduled_time}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDateLabel(appt.scheduled_date)} at {formatTimeLabel(appt.scheduled_time)}
+                  </p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  appt.status === "confirmed" ? "bg-success/10 text-success" :
-                  appt.status === "pending" ? "bg-warning/10 text-warning" :
-                  "bg-muted text-muted-foreground"
-                }`}>
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(appt.status)}`}>
                   {appt.status}
                 </span>
               </div>
