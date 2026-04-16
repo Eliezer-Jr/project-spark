@@ -12,6 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CustomerSettingsRouteImport } from './routes/customer.settings'
+import { Route as CustomerHistoryRouteImport } from './routes/customer.history'
+import { Route as CustomerFeedbackRouteImport } from './routes/customer.feedback'
+import { Route as CustomerDashboardRouteImport } from './routes/customer.dashboard'
+import { Route as CustomerBrowseRouteImport } from './routes/customer.browse'
+import { Route as CustomerAppointmentsRouteImport } from './routes/customer.appointments'
+import { Route as ArtisanSettingsRouteImport } from './routes/artisan.settings'
+import { Route as ArtisanServicesRouteImport } from './routes/artisan.services'
+import { Route as ArtisanFeedbackRouteImport } from './routes/artisan.feedback'
+import { Route as ArtisanDashboardRouteImport } from './routes/artisan.dashboard'
+import { Route as ArtisanCustomersRouteImport } from './routes/artisan.customers'
+import { Route as ArtisanAppointmentsRouteImport } from './routes/artisan.appointments'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -28,35 +40,189 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerSettingsRoute = CustomerSettingsRouteImport.update({
+  id: '/customer/settings',
+  path: '/customer/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerHistoryRoute = CustomerHistoryRouteImport.update({
+  id: '/customer/history',
+  path: '/customer/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerFeedbackRoute = CustomerFeedbackRouteImport.update({
+  id: '/customer/feedback',
+  path: '/customer/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerDashboardRoute = CustomerDashboardRouteImport.update({
+  id: '/customer/dashboard',
+  path: '/customer/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerBrowseRoute = CustomerBrowseRouteImport.update({
+  id: '/customer/browse',
+  path: '/customer/browse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerAppointmentsRoute = CustomerAppointmentsRouteImport.update({
+  id: '/customer/appointments',
+  path: '/customer/appointments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanSettingsRoute = ArtisanSettingsRouteImport.update({
+  id: '/artisan/settings',
+  path: '/artisan/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanServicesRoute = ArtisanServicesRouteImport.update({
+  id: '/artisan/services',
+  path: '/artisan/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanFeedbackRoute = ArtisanFeedbackRouteImport.update({
+  id: '/artisan/feedback',
+  path: '/artisan/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanDashboardRoute = ArtisanDashboardRouteImport.update({
+  id: '/artisan/dashboard',
+  path: '/artisan/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanCustomersRoute = ArtisanCustomersRouteImport.update({
+  id: '/artisan/customers',
+  path: '/artisan/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanAppointmentsRoute = ArtisanAppointmentsRouteImport.update({
+  id: '/artisan/appointments',
+  path: '/artisan/appointments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/artisan/appointments': typeof ArtisanAppointmentsRoute
+  '/artisan/customers': typeof ArtisanCustomersRoute
+  '/artisan/dashboard': typeof ArtisanDashboardRoute
+  '/artisan/feedback': typeof ArtisanFeedbackRoute
+  '/artisan/services': typeof ArtisanServicesRoute
+  '/artisan/settings': typeof ArtisanSettingsRoute
+  '/customer/appointments': typeof CustomerAppointmentsRoute
+  '/customer/browse': typeof CustomerBrowseRoute
+  '/customer/dashboard': typeof CustomerDashboardRoute
+  '/customer/feedback': typeof CustomerFeedbackRoute
+  '/customer/history': typeof CustomerHistoryRoute
+  '/customer/settings': typeof CustomerSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/artisan/appointments': typeof ArtisanAppointmentsRoute
+  '/artisan/customers': typeof ArtisanCustomersRoute
+  '/artisan/dashboard': typeof ArtisanDashboardRoute
+  '/artisan/feedback': typeof ArtisanFeedbackRoute
+  '/artisan/services': typeof ArtisanServicesRoute
+  '/artisan/settings': typeof ArtisanSettingsRoute
+  '/customer/appointments': typeof CustomerAppointmentsRoute
+  '/customer/browse': typeof CustomerBrowseRoute
+  '/customer/dashboard': typeof CustomerDashboardRoute
+  '/customer/feedback': typeof CustomerFeedbackRoute
+  '/customer/history': typeof CustomerHistoryRoute
+  '/customer/settings': typeof CustomerSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/artisan/appointments': typeof ArtisanAppointmentsRoute
+  '/artisan/customers': typeof ArtisanCustomersRoute
+  '/artisan/dashboard': typeof ArtisanDashboardRoute
+  '/artisan/feedback': typeof ArtisanFeedbackRoute
+  '/artisan/services': typeof ArtisanServicesRoute
+  '/artisan/settings': typeof ArtisanSettingsRoute
+  '/customer/appointments': typeof CustomerAppointmentsRoute
+  '/customer/browse': typeof CustomerBrowseRoute
+  '/customer/dashboard': typeof CustomerDashboardRoute
+  '/customer/feedback': typeof CustomerFeedbackRoute
+  '/customer/history': typeof CustomerHistoryRoute
+  '/customer/settings': typeof CustomerSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/artisan/appointments'
+    | '/artisan/customers'
+    | '/artisan/dashboard'
+    | '/artisan/feedback'
+    | '/artisan/services'
+    | '/artisan/settings'
+    | '/customer/appointments'
+    | '/customer/browse'
+    | '/customer/dashboard'
+    | '/customer/feedback'
+    | '/customer/history'
+    | '/customer/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup'
-  id: '__root__' | '/' | '/login' | '/signup'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/artisan/appointments'
+    | '/artisan/customers'
+    | '/artisan/dashboard'
+    | '/artisan/feedback'
+    | '/artisan/services'
+    | '/artisan/settings'
+    | '/customer/appointments'
+    | '/customer/browse'
+    | '/customer/dashboard'
+    | '/customer/feedback'
+    | '/customer/history'
+    | '/customer/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/artisan/appointments'
+    | '/artisan/customers'
+    | '/artisan/dashboard'
+    | '/artisan/feedback'
+    | '/artisan/services'
+    | '/artisan/settings'
+    | '/customer/appointments'
+    | '/customer/browse'
+    | '/customer/dashboard'
+    | '/customer/feedback'
+    | '/customer/history'
+    | '/customer/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  ArtisanAppointmentsRoute: typeof ArtisanAppointmentsRoute
+  ArtisanCustomersRoute: typeof ArtisanCustomersRoute
+  ArtisanDashboardRoute: typeof ArtisanDashboardRoute
+  ArtisanFeedbackRoute: typeof ArtisanFeedbackRoute
+  ArtisanServicesRoute: typeof ArtisanServicesRoute
+  ArtisanSettingsRoute: typeof ArtisanSettingsRoute
+  CustomerAppointmentsRoute: typeof CustomerAppointmentsRoute
+  CustomerBrowseRoute: typeof CustomerBrowseRoute
+  CustomerDashboardRoute: typeof CustomerDashboardRoute
+  CustomerFeedbackRoute: typeof CustomerFeedbackRoute
+  CustomerHistoryRoute: typeof CustomerHistoryRoute
+  CustomerSettingsRoute: typeof CustomerSettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +248,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customer/settings': {
+      id: '/customer/settings'
+      path: '/customer/settings'
+      fullPath: '/customer/settings'
+      preLoaderRoute: typeof CustomerSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/history': {
+      id: '/customer/history'
+      path: '/customer/history'
+      fullPath: '/customer/history'
+      preLoaderRoute: typeof CustomerHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/feedback': {
+      id: '/customer/feedback'
+      path: '/customer/feedback'
+      fullPath: '/customer/feedback'
+      preLoaderRoute: typeof CustomerFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/dashboard': {
+      id: '/customer/dashboard'
+      path: '/customer/dashboard'
+      fullPath: '/customer/dashboard'
+      preLoaderRoute: typeof CustomerDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/browse': {
+      id: '/customer/browse'
+      path: '/customer/browse'
+      fullPath: '/customer/browse'
+      preLoaderRoute: typeof CustomerBrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/appointments': {
+      id: '/customer/appointments'
+      path: '/customer/appointments'
+      fullPath: '/customer/appointments'
+      preLoaderRoute: typeof CustomerAppointmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/settings': {
+      id: '/artisan/settings'
+      path: '/artisan/settings'
+      fullPath: '/artisan/settings'
+      preLoaderRoute: typeof ArtisanSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/services': {
+      id: '/artisan/services'
+      path: '/artisan/services'
+      fullPath: '/artisan/services'
+      preLoaderRoute: typeof ArtisanServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/feedback': {
+      id: '/artisan/feedback'
+      path: '/artisan/feedback'
+      fullPath: '/artisan/feedback'
+      preLoaderRoute: typeof ArtisanFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/dashboard': {
+      id: '/artisan/dashboard'
+      path: '/artisan/dashboard'
+      fullPath: '/artisan/dashboard'
+      preLoaderRoute: typeof ArtisanDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/customers': {
+      id: '/artisan/customers'
+      path: '/artisan/customers'
+      fullPath: '/artisan/customers'
+      preLoaderRoute: typeof ArtisanCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/appointments': {
+      id: '/artisan/appointments'
+      path: '/artisan/appointments'
+      fullPath: '/artisan/appointments'
+      preLoaderRoute: typeof ArtisanAppointmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,7 +339,28 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  ArtisanAppointmentsRoute: ArtisanAppointmentsRoute,
+  ArtisanCustomersRoute: ArtisanCustomersRoute,
+  ArtisanDashboardRoute: ArtisanDashboardRoute,
+  ArtisanFeedbackRoute: ArtisanFeedbackRoute,
+  ArtisanServicesRoute: ArtisanServicesRoute,
+  ArtisanSettingsRoute: ArtisanSettingsRoute,
+  CustomerAppointmentsRoute: CustomerAppointmentsRoute,
+  CustomerBrowseRoute: CustomerBrowseRoute,
+  CustomerDashboardRoute: CustomerDashboardRoute,
+  CustomerFeedbackRoute: CustomerFeedbackRoute,
+  CustomerHistoryRoute: CustomerHistoryRoute,
+  CustomerSettingsRoute: CustomerSettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
