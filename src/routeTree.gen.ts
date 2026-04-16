@@ -13,6 +13,8 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomerSettingsRouteImport } from './routes/customer.settings'
+import { Route as CustomerRequestsRouteImport } from './routes/customer.requests'
+import { Route as CustomerQuotesRouteImport } from './routes/customer.quotes'
 import { Route as CustomerHistoryRouteImport } from './routes/customer.history'
 import { Route as CustomerFeedbackRouteImport } from './routes/customer.feedback'
 import { Route as CustomerDashboardRouteImport } from './routes/customer.dashboard'
@@ -20,6 +22,8 @@ import { Route as CustomerBrowseRouteImport } from './routes/customer.browse'
 import { Route as CustomerAppointmentsRouteImport } from './routes/customer.appointments'
 import { Route as ArtisanSettingsRouteImport } from './routes/artisan.settings'
 import { Route as ArtisanServicesRouteImport } from './routes/artisan.services'
+import { Route as ArtisanRequestsRouteImport } from './routes/artisan.requests'
+import { Route as ArtisanQuotesRouteImport } from './routes/artisan.quotes'
 import { Route as ArtisanFeedbackRouteImport } from './routes/artisan.feedback'
 import { Route as ArtisanDashboardRouteImport } from './routes/artisan.dashboard'
 import { Route as ArtisanCustomersRouteImport } from './routes/artisan.customers'
@@ -48,6 +52,16 @@ const IndexRoute = IndexRouteImport.update({
 const CustomerSettingsRoute = CustomerSettingsRouteImport.update({
   id: '/customer/settings',
   path: '/customer/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerRequestsRoute = CustomerRequestsRouteImport.update({
+  id: '/customer/requests',
+  path: '/customer/requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerQuotesRoute = CustomerQuotesRouteImport.update({
+  id: '/customer/quotes',
+  path: '/customer/quotes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustomerHistoryRoute = CustomerHistoryRouteImport.update({
@@ -83,6 +97,16 @@ const ArtisanSettingsRoute = ArtisanSettingsRouteImport.update({
 const ArtisanServicesRoute = ArtisanServicesRouteImport.update({
   id: '/artisan/services',
   path: '/artisan/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanRequestsRoute = ArtisanRequestsRouteImport.update({
+  id: '/artisan/requests',
+  path: '/artisan/requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtisanQuotesRoute = ArtisanQuotesRouteImport.update({
+  id: '/artisan/quotes',
+  path: '/artisan/quotes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtisanFeedbackRoute = ArtisanFeedbackRouteImport.update({
@@ -144,6 +168,8 @@ export interface FileRoutesByFullPath {
   '/artisan/customers': typeof ArtisanCustomersRoute
   '/artisan/dashboard': typeof ArtisanDashboardRoute
   '/artisan/feedback': typeof ArtisanFeedbackRoute
+  '/artisan/quotes': typeof ArtisanQuotesRoute
+  '/artisan/requests': typeof ArtisanRequestsRoute
   '/artisan/services': typeof ArtisanServicesRoute
   '/artisan/settings': typeof ArtisanSettingsRoute
   '/customer/appointments': typeof CustomerAppointmentsRoute
@@ -151,6 +177,8 @@ export interface FileRoutesByFullPath {
   '/customer/dashboard': typeof CustomerDashboardRoute
   '/customer/feedback': typeof CustomerFeedbackRoute
   '/customer/history': typeof CustomerHistoryRoute
+  '/customer/quotes': typeof CustomerQuotesRoute
+  '/customer/requests': typeof CustomerRequestsRoute
   '/customer/settings': typeof CustomerSettingsRoute
 }
 export interface FileRoutesByTo {
@@ -166,6 +194,8 @@ export interface FileRoutesByTo {
   '/artisan/customers': typeof ArtisanCustomersRoute
   '/artisan/dashboard': typeof ArtisanDashboardRoute
   '/artisan/feedback': typeof ArtisanFeedbackRoute
+  '/artisan/quotes': typeof ArtisanQuotesRoute
+  '/artisan/requests': typeof ArtisanRequestsRoute
   '/artisan/services': typeof ArtisanServicesRoute
   '/artisan/settings': typeof ArtisanSettingsRoute
   '/customer/appointments': typeof CustomerAppointmentsRoute
@@ -173,6 +203,8 @@ export interface FileRoutesByTo {
   '/customer/dashboard': typeof CustomerDashboardRoute
   '/customer/feedback': typeof CustomerFeedbackRoute
   '/customer/history': typeof CustomerHistoryRoute
+  '/customer/quotes': typeof CustomerQuotesRoute
+  '/customer/requests': typeof CustomerRequestsRoute
   '/customer/settings': typeof CustomerSettingsRoute
 }
 export interface FileRoutesById {
@@ -189,6 +221,8 @@ export interface FileRoutesById {
   '/artisan/customers': typeof ArtisanCustomersRoute
   '/artisan/dashboard': typeof ArtisanDashboardRoute
   '/artisan/feedback': typeof ArtisanFeedbackRoute
+  '/artisan/quotes': typeof ArtisanQuotesRoute
+  '/artisan/requests': typeof ArtisanRequestsRoute
   '/artisan/services': typeof ArtisanServicesRoute
   '/artisan/settings': typeof ArtisanSettingsRoute
   '/customer/appointments': typeof CustomerAppointmentsRoute
@@ -196,6 +230,8 @@ export interface FileRoutesById {
   '/customer/dashboard': typeof CustomerDashboardRoute
   '/customer/feedback': typeof CustomerFeedbackRoute
   '/customer/history': typeof CustomerHistoryRoute
+  '/customer/quotes': typeof CustomerQuotesRoute
+  '/customer/requests': typeof CustomerRequestsRoute
   '/customer/settings': typeof CustomerSettingsRoute
 }
 export interface FileRouteTypes {
@@ -213,6 +249,8 @@ export interface FileRouteTypes {
     | '/artisan/customers'
     | '/artisan/dashboard'
     | '/artisan/feedback'
+    | '/artisan/quotes'
+    | '/artisan/requests'
     | '/artisan/services'
     | '/artisan/settings'
     | '/customer/appointments'
@@ -220,6 +258,8 @@ export interface FileRouteTypes {
     | '/customer/dashboard'
     | '/customer/feedback'
     | '/customer/history'
+    | '/customer/quotes'
+    | '/customer/requests'
     | '/customer/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -235,6 +275,8 @@ export interface FileRouteTypes {
     | '/artisan/customers'
     | '/artisan/dashboard'
     | '/artisan/feedback'
+    | '/artisan/quotes'
+    | '/artisan/requests'
     | '/artisan/services'
     | '/artisan/settings'
     | '/customer/appointments'
@@ -242,6 +284,8 @@ export interface FileRouteTypes {
     | '/customer/dashboard'
     | '/customer/feedback'
     | '/customer/history'
+    | '/customer/quotes'
+    | '/customer/requests'
     | '/customer/settings'
   id:
     | '__root__'
@@ -257,6 +301,8 @@ export interface FileRouteTypes {
     | '/artisan/customers'
     | '/artisan/dashboard'
     | '/artisan/feedback'
+    | '/artisan/quotes'
+    | '/artisan/requests'
     | '/artisan/services'
     | '/artisan/settings'
     | '/customer/appointments'
@@ -264,6 +310,8 @@ export interface FileRouteTypes {
     | '/customer/dashboard'
     | '/customer/feedback'
     | '/customer/history'
+    | '/customer/quotes'
+    | '/customer/requests'
     | '/customer/settings'
   fileRoutesById: FileRoutesById
 }
@@ -280,6 +328,8 @@ export interface RootRouteChildren {
   ArtisanCustomersRoute: typeof ArtisanCustomersRoute
   ArtisanDashboardRoute: typeof ArtisanDashboardRoute
   ArtisanFeedbackRoute: typeof ArtisanFeedbackRoute
+  ArtisanQuotesRoute: typeof ArtisanQuotesRoute
+  ArtisanRequestsRoute: typeof ArtisanRequestsRoute
   ArtisanServicesRoute: typeof ArtisanServicesRoute
   ArtisanSettingsRoute: typeof ArtisanSettingsRoute
   CustomerAppointmentsRoute: typeof CustomerAppointmentsRoute
@@ -287,6 +337,8 @@ export interface RootRouteChildren {
   CustomerDashboardRoute: typeof CustomerDashboardRoute
   CustomerFeedbackRoute: typeof CustomerFeedbackRoute
   CustomerHistoryRoute: typeof CustomerHistoryRoute
+  CustomerQuotesRoute: typeof CustomerQuotesRoute
+  CustomerRequestsRoute: typeof CustomerRequestsRoute
   CustomerSettingsRoute: typeof CustomerSettingsRoute
 }
 
@@ -318,6 +370,20 @@ declare module '@tanstack/react-router' {
       path: '/customer/settings'
       fullPath: '/customer/settings'
       preLoaderRoute: typeof CustomerSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/requests': {
+      id: '/customer/requests'
+      path: '/customer/requests'
+      fullPath: '/customer/requests'
+      preLoaderRoute: typeof CustomerRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer/quotes': {
+      id: '/customer/quotes'
+      path: '/customer/quotes'
+      fullPath: '/customer/quotes'
+      preLoaderRoute: typeof CustomerQuotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/customer/history': {
@@ -367,6 +433,20 @@ declare module '@tanstack/react-router' {
       path: '/artisan/services'
       fullPath: '/artisan/services'
       preLoaderRoute: typeof ArtisanServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/requests': {
+      id: '/artisan/requests'
+      path: '/artisan/requests'
+      fullPath: '/artisan/requests'
+      preLoaderRoute: typeof ArtisanRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artisan/quotes': {
+      id: '/artisan/quotes'
+      path: '/artisan/quotes'
+      fullPath: '/artisan/quotes'
+      preLoaderRoute: typeof ArtisanQuotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artisan/feedback': {
@@ -448,6 +528,8 @@ const rootRouteChildren: RootRouteChildren = {
   ArtisanCustomersRoute: ArtisanCustomersRoute,
   ArtisanDashboardRoute: ArtisanDashboardRoute,
   ArtisanFeedbackRoute: ArtisanFeedbackRoute,
+  ArtisanQuotesRoute: ArtisanQuotesRoute,
+  ArtisanRequestsRoute: ArtisanRequestsRoute,
   ArtisanServicesRoute: ArtisanServicesRoute,
   ArtisanSettingsRoute: ArtisanSettingsRoute,
   CustomerAppointmentsRoute: CustomerAppointmentsRoute,
@@ -455,6 +537,8 @@ const rootRouteChildren: RootRouteChildren = {
   CustomerDashboardRoute: CustomerDashboardRoute,
   CustomerFeedbackRoute: CustomerFeedbackRoute,
   CustomerHistoryRoute: CustomerHistoryRoute,
+  CustomerQuotesRoute: CustomerQuotesRoute,
+  CustomerRequestsRoute: CustomerRequestsRoute,
   CustomerSettingsRoute: CustomerSettingsRoute,
 }
 export const routeTree = rootRouteImport

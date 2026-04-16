@@ -3,8 +3,10 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateLabel, formatTimeLabel, getStatusClasses } from "@/lib/crm-helpers";
-import { Users, Calendar, Wrench, Star, Wallet, Clock3 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Users, Calendar, Wrench, Star, Wallet, Clock3, FileText, Inbox } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
@@ -25,17 +27,19 @@ function ArtisanDashboard() {
 
 function DashboardContent() {
   const { user, profile } = useAuth();
-  const [stats, setStats] = useState({ customers: 0, appointments: 0, services: 0, avgRating: 0, revenue: 0, pending: 0 });
+  const [stats, setStats] = useState({ customers: 0, appointments: 0, services: 0, avgRating: 0, revenue: 0, pending: 0, quotes: 0, requests: 0 });
   const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const [custRes, apptRes, svcRes, fbRes] = await Promise.all([
+      const [custRes, apptRes, svcRes, fbRes, quoteRes, requestRes] = await Promise.all([
         db.from("customers").select("id", { count: "exact" }).eq("artisan_id", user.id),
         db.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }).limit(5),
         db.from("service_records").select("id", { count: "exact" }).eq("artisan_id", user.id),
         db.from("feedback").select("rating").eq("artisan_id", user.id),
+        db.from("quotes").select("id", { count: "exact" }).eq("artisan_id", user.id),
+        db.from("work_requests").select("id", { count: "exact" }).eq("artisan_id", user.id),
       ]);
       const ratings = (fbRes.data || []) as any[];
       const services = (svcRes.data || []) as any[];
@@ -48,6 +52,8 @@ function DashboardContent() {
         avgRating: Math.round(avg * 10) / 10,
         revenue: services.reduce((sum: number, service: any) => sum + Number(service.cost || 0), 0),
         pending: appointments.filter((appointment: any) => appointment.status === "pending").length,
+        quotes: quoteRes.count || 0,
+        requests: requestRes.count || 0,
       });
       setRecentAppointments(appointments);
     };
@@ -57,11 +63,13 @@ function DashboardContent() {
   return (
     <>
       <PageHeader title={`Welcome, ${profile?.full_name || "Artisan"}`} description="Here's your business overview" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <StatCard title="Customers" value={stats.customers} icon={Users} />
         <StatCard title="Upcoming Appointments" value={stats.appointments} icon={Calendar} />
         <StatCard title="Services Completed" value={stats.services} icon={Wrench} />
         <StatCard title="Avg Rating" value={stats.avgRating || "-"} icon={Star} />
+        <StatCard title="Quotes" value={stats.quotes} icon={FileText} />
+        <StatCard title="Requests" value={stats.requests} icon={Inbox} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -81,6 +89,23 @@ function DashboardContent() {
           </div>
           <p className="mt-2 text-3xl font-semibold text-card-foreground">{stats.pending}</p>
           <p className="mt-1 text-sm text-muted-foreground">Pending appointments waiting for confirmation.</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-card-foreground">Quotes Workflow</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Create quotes, send them for approval, and convert approved work faster.</p>
+          <Link to="/artisan/quotes" className="mt-4 inline-block">
+            <Button variant="outline" size="sm">Manage Quotes</Button>
+          </Link>
+        </div>
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-card-foreground">Incoming Requests</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Track customer-requested jobs and move them into scheduled work.</p>
+          <Link to="/artisan/requests" className="mt-4 inline-block">
+            <Button variant="outline" size="sm">Open Requests</Button>
+          </Link>
         </div>
       </div>
 

@@ -2,7 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, Users, Calendar, Wrench, MessageSquare, Settings,
-  Search, ClipboardList, BarChart3, FolderCog, Activity, LogOut, Menu, X,
+  Search, ClipboardList, BarChart3, FolderCog, Activity, LogOut, Menu, X, FileText, Inbox,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ const artisanLinks = [
   { to: "/artisan/customers", label: "Customers", icon: Users },
   { to: "/artisan/appointments", label: "Appointments", icon: Calendar },
   { to: "/artisan/services", label: "Services", icon: Wrench },
+  { to: "/artisan/quotes", label: "Quotes", icon: FileText },
+  { to: "/artisan/requests", label: "Requests", icon: Inbox },
   { to: "/artisan/feedback", label: "Feedback", icon: MessageSquare },
   { to: "/artisan/settings", label: "Settings", icon: Settings },
 ];
@@ -20,6 +22,8 @@ const customerLinks = [
   { to: "/customer/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/customer/browse", label: "Browse Artisans", icon: Search },
   { to: "/customer/appointments", label: "Appointments", icon: Calendar },
+  { to: "/customer/quotes", label: "My Quotes", icon: FileText },
+  { to: "/customer/requests", label: "Service Requests", icon: Inbox },
   { to: "/customer/history", label: "Service History", icon: ClipboardList },
   { to: "/customer/feedback", label: "My Feedback", icon: MessageSquare },
   { to: "/customer/settings", label: "Settings", icon: Settings },

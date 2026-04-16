@@ -41,17 +41,36 @@ export function formatTimeLabel(value: string) {
 
 export function getStatusClasses(status: string) {
   switch (status) {
+    case "approved":
+    case "scheduled":
     case "confirmed":
     case "completed":
       return "bg-success/10 text-success";
+    case "awaiting_response":
+    case "changes_requested":
+    case "reviewing":
+    case "new":
     case "pending":
     case "in_progress":
       return "bg-warning/10 text-warning";
+    case "converted":
+      return "bg-primary/10 text-primary";
+    case "draft":
+    case "archived":
+    case "closed":
+      return "bg-secondary text-secondary-foreground";
     case "cancelled":
       return "bg-destructive/10 text-destructive";
     default:
       return "bg-muted text-muted-foreground";
   }
+}
+
+export function formatStatusLabel(status: string) {
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function isBlockingAppointmentStatus(status: AppointmentStatus) {

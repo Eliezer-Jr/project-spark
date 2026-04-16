@@ -59,6 +59,28 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeState(state: Partial<AppState>): AppState {
+  const seed = createSeedState();
+
+  return {
+    sessionUserId: state.sessionUserId ?? seed.sessionUserId,
+    authUsers: Array.isArray(state.authUsers) ? state.authUsers : seed.authUsers,
+    tables: {
+      profiles: Array.isArray(state.tables?.profiles) ? state.tables.profiles : seed.tables.profiles,
+      user_roles: Array.isArray(state.tables?.user_roles) ? state.tables.user_roles : seed.tables.user_roles,
+      service_categories: Array.isArray(state.tables?.service_categories)
+        ? state.tables.service_categories
+        : seed.tables.service_categories,
+      customers: Array.isArray(state.tables?.customers) ? state.tables.customers : seed.tables.customers,
+      service_records: Array.isArray(state.tables?.service_records) ? state.tables.service_records : seed.tables.service_records,
+      appointments: Array.isArray(state.tables?.appointments) ? state.tables.appointments : seed.tables.appointments,
+      feedback: Array.isArray(state.tables?.feedback) ? state.tables.feedback : seed.tables.feedback,
+      quotes: Array.isArray(state.tables?.quotes) ? state.tables.quotes : seed.tables.quotes,
+      work_requests: Array.isArray(state.tables?.work_requests) ? state.tables.work_requests : seed.tables.work_requests,
+    },
+  };
+}
+
 function hasWindow() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
@@ -77,8 +99,11 @@ function readState(): AppState {
   }
 
   try {
-    const parsed = JSON.parse(saved) as AppState;
+    const parsed = normalizeState(JSON.parse(saved) as Partial<AppState>);
     memoryState = parsed;
+    if (JSON.stringify(parsed) !== saved) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    }
     return clone(parsed);
   } catch {
     const seed = createSeedState();
@@ -138,6 +163,8 @@ function createSeedState(): AppState {
   const categoryElectricalId = "category-electrical";
   const categoryPlumbingId = "category-plumbing";
   const categoryCarpentryId = "category-carpentry";
+  const quoteId = "quote-seed-1";
+  const requestId = "request-seed-1";
 
   return {
     sessionUserId: null,
@@ -248,6 +275,37 @@ function createSeedState(): AppState {
           created_at: createdAt,
         },
       ],
+      quotes: [
+        {
+          id: quoteId,
+          artisan_id: artisanId,
+          customer_id: customerRecordId,
+          customer_user_id: customerId,
+          title: "Kitchen rewiring estimate",
+          description: "Replace damaged socket points and install protective breakers.",
+          amount: 850,
+          deposit_amount: 200,
+          status: "awaiting_response",
+          requested_changes: null,
+          valid_until: "2026-05-15",
+          created_at: createdAt,
+          updated_at: createdAt,
+        },
+      ],
+      work_requests: [
+        {
+          id: requestId,
+          artisan_id: artisanId,
+          customer_user_id: customerId,
+          title: "Outdoor security light installation",
+          description: "Need two motion sensor lights installed at the compound entrance.",
+          preferred_date: "2026-04-22",
+          status: "new",
+          response_note: null,
+          created_at: createdAt,
+          updated_at: createdAt,
+        },
+      ],
     },
   };
 }
@@ -331,6 +389,35 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         rating: input.rating as number,
         comment: (input.comment as string | null) ?? null,
         created_at: (input.created_at as string | undefined) ?? timestamp,
+      } as TableRow<T>;
+    case "quotes":
+      return {
+        id: (input.id as string) ?? createId("quote"),
+        artisan_id: input.artisan_id as string,
+        customer_id: (input.customer_id as string | null) ?? null,
+        customer_user_id: (input.customer_user_id as string | null) ?? null,
+        title: input.title as string,
+        description: (input.description as string | null) ?? null,
+        amount: Number(input.amount ?? 0),
+        deposit_amount: (input.deposit_amount as number | null) ?? null,
+        status: (input.status as TableRow<"quotes">["status"] | undefined) ?? "draft",
+        requested_changes: (input.requested_changes as string | null) ?? null,
+        valid_until: (input.valid_until as string | null) ?? null,
+        created_at: (input.created_at as string | undefined) ?? timestamp,
+        updated_at: timestamp,
+      } as TableRow<T>;
+    case "work_requests":
+      return {
+        id: (input.id as string) ?? createId("request"),
+        artisan_id: (input.artisan_id as string | null) ?? null,
+        customer_user_id: input.customer_user_id as string,
+        title: input.title as string,
+        description: input.description as string,
+        preferred_date: (input.preferred_date as string | null) ?? null,
+        status: (input.status as TableRow<"work_requests">["status"] | undefined) ?? "new",
+        response_note: (input.response_note as string | null) ?? null,
+        created_at: (input.created_at as string | undefined) ?? timestamp,
+        updated_at: timestamp,
       } as TableRow<T>;
     default:
       throw new Error(`Unsupported table: ${String(table)}`);
@@ -458,7 +545,7 @@ class MutationQueryBuilder<T extends TableName> implements PromiseLike<QueryResp
         } as TableRow<T>;
 
         if ("updated_at" in nextRow) {
-          (nextRow as TableRow<"profiles"> | TableRow<"customers"> | TableRow<"appointments">).updated_at = nowIso();
+          (nextRow as TableRow<T> & { updated_at: string }).updated_at = nowIso();
         }
 
         return nextRow;

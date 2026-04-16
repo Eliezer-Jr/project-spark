@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ArtisanCRM</string>
+    <string name="title_activity_main">ArtisanCRM</string>
+    <string name="package_name">com.projectspark.artisancrm</string>
+    <string name="custom_url_scheme">com.projectspark.artisancrm</string>
+</resources>

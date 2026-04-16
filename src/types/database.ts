@@ -1,6 +1,8 @@
 export type AppRole = "admin" | "artisan" | "customer";
 
 export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled";
+export type QuoteStatus = "draft" | "awaiting_response" | "changes_requested" | "approved" | "converted" | "archived";
+export type WorkRequestStatus = "new" | "reviewing" | "scheduled" | "closed";
 
 export interface Database {
   public: {
@@ -102,10 +104,47 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["feedback"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["feedback"]["Insert"]>;
       };
+      quotes: {
+        Row: {
+          id: string;
+          artisan_id: string;
+          customer_id: string | null;
+          customer_user_id: string | null;
+          title: string;
+          description: string | null;
+          amount: number;
+          deposit_amount: number | null;
+          status: QuoteStatus;
+          requested_changes: string | null;
+          valid_until: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["quotes"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["quotes"]["Insert"]>;
+      };
+      work_requests: {
+        Row: {
+          id: string;
+          artisan_id: string | null;
+          customer_user_id: string;
+          title: string;
+          description: string;
+          preferred_date: string | null;
+          status: WorkRequestStatus;
+          response_note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["work_requests"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["work_requests"]["Insert"]>;
+      };
     };
     Enums: {
       app_role: AppRole;
       appointment_status: AppointmentStatus;
+      quote_status: QuoteStatus;
+      work_request_status: WorkRequestStatus;
     };
     Functions: {
       has_role: {
