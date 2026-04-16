@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,12 +23,12 @@ function UsersContent() {
   const [search, setSearch] = useState("");
 
   const load = async () => {
-    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+    const { data: roles } = await db.from("user_roles").select("user_id, role");
     const roleMap: Record<string, string> = {};
     ((roles || []) as any[]).forEach((r: any) => { roleMap[r.user_id] = r.role; });
     const ids = Object.keys(roleMap);
     if (ids.length) {
-      const { data: profiles } = await supabase.from("profiles").select("*").in("id", ids);
+      const { data: profiles } = await db.from("profiles").select("*").in("id", ids);
       setUsers(((profiles || []) as any[]).map((p: any) => ({ ...p, role: roleMap[p.id] })));
     }
   };
@@ -36,7 +36,7 @@ function UsersContent() {
   useEffect(() => { load(); }, []);
 
   const toggleActive = async (id: string, current: boolean) => {
-    await supabase.from("profiles").update({ is_active: !current }).eq("id", id);
+    await db.from("profiles").update({ is_active: !current }).eq("id", id);
     toast.success(current ? "User deactivated" : "User activated");
     load();
   };

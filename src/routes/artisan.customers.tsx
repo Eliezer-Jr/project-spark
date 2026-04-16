@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ function CustomersContent() {
 
   const loadCustomers = async () => {
     if (!user) return;
-    const { data } = await supabase.from("customers").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false });
+    const { data } = await db.from("customers").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false });
     setCustomers((data || []) as any[]);
   };
 
@@ -39,11 +39,11 @@ function CustomersContent() {
   const handleSave = async () => {
     if (!user || !form.name.trim()) return;
     if (editing) {
-      const { error } = await supabase.from("customers").update(form).eq("id", editing.id);
+      const { error } = await db.from("customers").update(form).eq("id", editing.id);
       if (error) { toast.error(error.message); return; }
       toast.success("Customer updated");
     } else {
-      const { error } = await supabase.from("customers").insert({ ...form, artisan_id: user.id });
+      const { error } = await db.from("customers").insert({ ...form, artisan_id: user.id });
       if (error) { toast.error(error.message); return; }
       toast.success("Customer added");
     }
@@ -55,7 +55,7 @@ function CustomersContent() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this customer?")) return;
-    await supabase.from("customers").delete().eq("id", id);
+    await db.from("customers").delete().eq("id", id);
     toast.success("Customer deleted");
     loadCustomers();
   };

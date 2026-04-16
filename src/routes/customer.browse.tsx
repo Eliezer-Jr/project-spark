@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,12 +27,12 @@ function BrowseContent() {
   useEffect(() => {
     const load = async () => {
       const [rolesRes, catRes] = await Promise.all([
-        supabase.from("user_roles").select("user_id").eq("role", "artisan"),
-        supabase.from("service_categories").select("*"),
+        db.from("user_roles").select("user_id").eq("role", "artisan"),
+        db.from("service_categories").select("*"),
       ]);
       const artisanIds = ((rolesRes.data || []) as any[]).map((r: any) => r.user_id);
       if (artisanIds.length > 0) {
-        const { data } = await supabase.from("profiles").select("*").in("id", artisanIds).eq("is_active", true);
+        const { data } = await db.from("profiles").select("*").in("id", artisanIds).eq("is_active", true);
         setArtisans((data || []) as any[]);
       }
       setCategories((catRes.data || []) as any[]);

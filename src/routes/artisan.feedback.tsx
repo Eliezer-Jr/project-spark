@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Star, MessageSquare } from "lucide-react";
 
@@ -21,7 +21,7 @@ function FeedbackContent() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("feedback").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false })
+    db.from("feedback").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false })
       .then(({ data }) => setFeedbacks((data || []) as any[]));
   }, [user]);
 

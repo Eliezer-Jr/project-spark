@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Calendar, ClipboardList, MessageSquare, Search } from "lucide-react";
 
@@ -24,9 +24,9 @@ function CustomerDashContent() {
     if (!user) return;
     const load = async () => {
       const [apptRes, compRes, fbRes] = await Promise.all([
-        supabase.from("appointments").select("id", { count: "exact" }).eq("customer_user_id", user.id),
-        supabase.from("appointments").select("id", { count: "exact" }).eq("customer_user_id", user.id).eq("status", "completed"),
-        supabase.from("feedback").select("id", { count: "exact" }).eq("customer_user_id", user.id),
+        db.from("appointments").select("id", { count: "exact" }).eq("customer_user_id", user.id),
+        db.from("appointments").select("id", { count: "exact" }).eq("customer_user_id", user.id).eq("status", "completed"),
+        db.from("feedback").select("id", { count: "exact" }).eq("customer_user_id", user.id),
       ]);
       setStats({ appointments: apptRes.count || 0, completed: compRes.count || 0, feedbacks: fbRes.count || 0 });
     };

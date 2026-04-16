@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,12 +30,12 @@ function CustFeedbackContent() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("feedback").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false });
+    const { data } = await db.from("feedback").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false });
     setFeedbacks((data || []) as any[]);
-    const rolesRes = await supabase.from("user_roles").select("user_id").eq("role", "artisan");
+    const rolesRes = await db.from("user_roles").select("user_id").eq("role", "artisan");
     const ids = ((rolesRes.data || []) as any[]).map((r: any) => r.user_id);
     if (ids.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      const { data: profiles } = await db.from("profiles").select("id, full_name").in("id", ids);
       setArtisans((profiles || []) as any[]);
     }
   };
@@ -44,7 +44,7 @@ function CustFeedbackContent() {
 
   const handleSubmit = async () => {
     if (!user || !form.artisan_id) return;
-    const { error } = await supabase.from("feedback").insert({
+    const { error } = await db.from("feedback").insert({
       artisan_id: form.artisan_id,
       customer_user_id: user.id,
       rating: parseInt(form.rating),

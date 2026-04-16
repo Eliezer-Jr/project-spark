@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ function CategoriesContent() {
   const [form, setForm] = useState({ name: "", description: "" });
 
   const load = async () => {
-    const { data } = await supabase.from("service_categories").select("*").order("name");
+    const { data } = await db.from("service_categories").select("*").order("name");
     setCategories((data || []) as any[]);
   };
 
@@ -35,11 +35,11 @@ function CategoriesContent() {
   const handleSave = async () => {
     if (!form.name.trim()) return;
     if (editing) {
-      const { error } = await supabase.from("service_categories").update(form).eq("id", editing.id);
+      const { error } = await db.from("service_categories").update(form).eq("id", editing.id);
       if (error) { toast.error(error.message); return; }
       toast.success("Category updated");
     } else {
-      const { error } = await supabase.from("service_categories").insert(form);
+      const { error } = await db.from("service_categories").insert(form);
       if (error) { toast.error(error.message); return; }
       toast.success("Category added");
     }
@@ -51,7 +51,7 @@ function CategoriesContent() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this category?")) return;
-    await supabase.from("service_categories").delete().eq("id", id);
+    await db.from("service_categories").delete().eq("id", id);
     toast.success("Category deleted");
     load();
   };

@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,9 @@ function ServicesContent() {
   const load = async () => {
     if (!user) return;
     const [recRes, custRes, catRes] = await Promise.all([
-      supabase.from("service_records").select("*").eq("artisan_id", user.id).order("service_date", { ascending: false }),
-      supabase.from("customers").select("id, name").eq("artisan_id", user.id),
-      supabase.from("service_categories").select("*"),
+      db.from("service_records").select("*").eq("artisan_id", user.id).order("service_date", { ascending: false }),
+      db.from("customers").select("id, name").eq("artisan_id", user.id),
+      db.from("service_categories").select("*"),
     ]);
     setRecords((recRes.data || []) as any[]);
     setCustomers((custRes.data || []) as any[]);
@@ -46,7 +46,7 @@ function ServicesContent() {
 
   const handleSave = async () => {
     if (!user || !form.customer_id || !form.description) return;
-    const { error } = await supabase.from("service_records").insert({
+    const { error } = await db.from("service_records").insert({
       artisan_id: user.id,
       customer_id: form.customer_id,
       category_id: form.category_id || null,

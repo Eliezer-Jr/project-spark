@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Users, Calendar, Wrench, Star, BarChart3 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
@@ -22,9 +22,9 @@ function AdminDashContent() {
   useEffect(() => {
     const load = async () => {
       const [rolesRes, apptRes, svcRes] = await Promise.all([
-        supabase.from("user_roles").select("role"),
-        supabase.from("appointments").select("id", { count: "exact" }),
-        supabase.from("service_records").select("id", { count: "exact" }),
+        db.from("user_roles").select("role"),
+        db.from("appointments").select("id", { count: "exact" }),
+        db.from("service_records").select("id", { count: "exact" }),
       ]);
       const roles = (rolesRes.data || []) as any[];
       setStats({

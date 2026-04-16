@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +32,8 @@ function AppointmentsContent() {
   const load = async () => {
     if (!user) return;
     const [apptRes, custRes] = await Promise.all([
-      supabase.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }),
-      supabase.from("customers").select("id, name").eq("artisan_id", user.id),
+      db.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }),
+      db.from("customers").select("id, name").eq("artisan_id", user.id),
     ]);
     setAppointments((apptRes.data || []) as any[]);
     setCustomers((custRes.data || []) as any[]);
@@ -43,7 +43,7 @@ function AppointmentsContent() {
 
   const handleSave = async () => {
     if (!user || !form.title || !form.scheduled_date || !form.scheduled_time) return;
-    const { error } = await supabase.from("appointments").insert({
+    const { error } = await db.from("appointments").insert({
       ...form,
       artisan_id: user.id,
       customer_id: form.customer_id || null,
@@ -56,7 +56,7 @@ function AppointmentsContent() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("appointments").update({ status }).eq("id", id);
+    await db.from("appointments").update({ status }).eq("id", id);
     toast.success("Status updated");
     load();
   };

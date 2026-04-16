@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 
@@ -21,8 +21,8 @@ function ActivityContent() {
   useEffect(() => {
     const load = async () => {
       const [apptRes, fbRes] = await Promise.all([
-        supabase.from("appointments").select("*").order("created_at", { ascending: false }).limit(10),
-        supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(10),
+        db.from("appointments").select("*").order("created_at", { ascending: false }).limit(10),
+        db.from("feedback").select("*").order("created_at", { ascending: false }).limit(10),
       ]);
       setRecentAppts((apptRes.data || []) as any[]);
       setRecentFeedback((fbRes.data || []) as any[]);

@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,13 +30,13 @@ function CustAppointmentsContent() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("appointments").select("*").eq("customer_user_id", user.id).order("scheduled_date", { ascending: false });
+    const { data } = await db.from("appointments").select("*").eq("customer_user_id", user.id).order("scheduled_date", { ascending: false });
     setAppointments((data || []) as any[]);
     // Load artisans
-    const rolesRes = await supabase.from("user_roles").select("user_id").eq("role", "artisan");
+    const rolesRes = await db.from("user_roles").select("user_id").eq("role", "artisan");
     const ids = ((rolesRes.data || []) as any[]).map((r: any) => r.user_id);
     if (ids.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name, specialization").in("id", ids);
+      const { data: profiles } = await db.from("profiles").select("id, full_name, specialization").in("id", ids);
       setArtisans((profiles || []) as any[]);
     }
   };
@@ -45,7 +45,7 @@ function CustAppointmentsContent() {
 
   const handleBook = async () => {
     if (!user || !form.artisan_id || !form.title || !form.scheduled_date || !form.scheduled_time) return;
-    const { error } = await supabase.from("appointments").insert({
+    const { error } = await db.from("appointments").insert({
       artisan_id: form.artisan_id,
       customer_user_id: user.id,
       title: form.title,

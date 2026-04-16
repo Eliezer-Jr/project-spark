@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
-import type { User, Session } from "@supabase/supabase-js";
 import type { AppRole } from "@/types/database";
+import { db, type AuthSession, type AuthUser } from "@/lib/app-db";
 
 interface Profile {
   id: string;
@@ -15,8 +14,8 @@ interface Profile {
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: AuthSession | null;
   role: AppRole | null;
   profile: Profile | null;
   loading: boolean;
@@ -29,8 +28,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,18 +37,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = async (userId: string) => {
     try {
       const [roleRes, profileRes] = await Promise.all([
-        supabase.from("user_roles" as any).select("role").eq("user_id", userId).single(),
-        supabase.from("profiles" as any).select("*").eq("id", userId).single(),
+        db.from("user_roles").select("role").eq("user_id", userId).single(),
+        db.from("profiles").select("*").eq("id", userId).single(),
       ]);
-      if (roleRes.data) setRole((roleRes.data as any).role as AppRole);
-      if (profileRes.data) setProfile(profileRes.data as any);
+      setRole(roleRes.data?.role ?? null);
+      setProfile(profileRes.data ?? null);
     } catch (e) {
       console.error("Error fetching user data:", e);
     }
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    db.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -59,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -74,35 +73,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, selectedRole: AppRole) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await db.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName, role: selectedRole } },
     });
-    if (error) return { error };
-
-    if (data.user) {
-      await (supabase.from("profiles" as any) as any).insert({
-        id: data.user.id,
-        full_name: fullName,
-        is_active: true,
-      });
-      await (supabase.from("user_roles" as any) as any).insert({
-        user_id: data.user.id,
-        role: selectedRole,
-      });
-      setRole(selectedRole);
-    }
-    return { error: null };
+    if (!error) setRole(selectedRole);
+    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await db.auth.signInWithPassword({ email, password });
     return { error };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     setRole(null);
     setProfile(null);
   };

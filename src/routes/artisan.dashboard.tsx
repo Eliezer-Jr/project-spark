@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
 import { Users, Calendar, Wrench, Star } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/artisan/dashboard")({
@@ -31,10 +31,10 @@ function DashboardContent() {
     if (!user) return;
     const load = async () => {
       const [custRes, apptRes, svcRes, fbRes] = await Promise.all([
-        supabase.from("customers").select("id", { count: "exact" }).eq("artisan_id", user.id),
-        supabase.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }).limit(5),
-        supabase.from("service_records").select("id", { count: "exact" }).eq("artisan_id", user.id),
-        supabase.from("feedback").select("rating").eq("artisan_id", user.id),
+        db.from("customers").select("id", { count: "exact" }).eq("artisan_id", user.id),
+        db.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }).limit(5),
+        db.from("service_records").select("id", { count: "exact" }).eq("artisan_id", user.id),
+        db.from("feedback").select("rating").eq("artisan_id", user.id),
       ]);
       const ratings = (fbRes.data || []) as any[];
       const avg = ratings.length ? ratings.reduce((s: number, r: any) => s + r.rating, 0) / ratings.length : 0;

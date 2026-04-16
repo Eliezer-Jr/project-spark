@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
@@ -21,7 +21,7 @@ function HistoryContent() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("appointments").select("*").eq("customer_user_id", user.id).eq("status", "completed").order("scheduled_date", { ascending: false })
+    db.from("appointments").select("*").eq("customer_user_id", user.id).eq("status", "completed").order("scheduled_date", { ascending: false })
       .then(({ data }) => setAppointments((data || []) as any[]));
   }, [user]);
 

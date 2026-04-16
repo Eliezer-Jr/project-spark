@@ -3,7 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
 import { Users, Calendar, Star, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from "recharts";
@@ -24,10 +24,10 @@ function AnalyticsContent() {
   useEffect(() => {
     const load = async () => {
       const [rolesRes, apptRes, fbRes, svcRes] = await Promise.all([
-        supabase.from("user_roles").select("role"),
-        supabase.from("appointments").select("status"),
-        supabase.from("feedback").select("rating"),
-        supabase.from("service_records").select("id", { count: "exact" }),
+        db.from("user_roles").select("role"),
+        db.from("appointments").select("status"),
+        db.from("feedback").select("rating"),
+        db.from("service_records").select("id", { count: "exact" }),
       ]);
       const roles = (rolesRes.data || []) as any[];
       const appts = (apptRes.data || []) as any[];
