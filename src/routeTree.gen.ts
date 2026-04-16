@@ -24,6 +24,11 @@ import { Route as ArtisanFeedbackRouteImport } from './routes/artisan.feedback'
 import { Route as ArtisanDashboardRouteImport } from './routes/artisan.dashboard'
 import { Route as ArtisanCustomersRouteImport } from './routes/artisan.customers'
 import { Route as ArtisanAppointmentsRouteImport } from './routes/artisan.appointments'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -100,11 +105,41 @@ const ArtisanAppointmentsRoute = ArtisanAppointmentsRouteImport.update({
   path: '/artisan/appointments',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/admin/categories',
+  path: '/admin/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/admin/activity',
+  path: '/admin/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/admin/activity': typeof AdminActivityRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/users': typeof AdminUsersRoute
   '/artisan/appointments': typeof ArtisanAppointmentsRoute
   '/artisan/customers': typeof ArtisanCustomersRoute
   '/artisan/dashboard': typeof ArtisanDashboardRoute
@@ -122,6 +157,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/admin/activity': typeof AdminActivityRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/users': typeof AdminUsersRoute
   '/artisan/appointments': typeof ArtisanAppointmentsRoute
   '/artisan/customers': typeof ArtisanCustomersRoute
   '/artisan/dashboard': typeof ArtisanDashboardRoute
@@ -140,6 +180,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/admin/activity': typeof AdminActivityRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/users': typeof AdminUsersRoute
   '/artisan/appointments': typeof ArtisanAppointmentsRoute
   '/artisan/customers': typeof ArtisanCustomersRoute
   '/artisan/dashboard': typeof ArtisanDashboardRoute
@@ -159,6 +204,11 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/admin/activity'
+    | '/admin/analytics'
+    | '/admin/categories'
+    | '/admin/dashboard'
+    | '/admin/users'
     | '/artisan/appointments'
     | '/artisan/customers'
     | '/artisan/dashboard'
@@ -176,6 +226,11 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/admin/activity'
+    | '/admin/analytics'
+    | '/admin/categories'
+    | '/admin/dashboard'
+    | '/admin/users'
     | '/artisan/appointments'
     | '/artisan/customers'
     | '/artisan/dashboard'
@@ -193,6 +248,11 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/admin/activity'
+    | '/admin/analytics'
+    | '/admin/categories'
+    | '/admin/dashboard'
+    | '/admin/users'
     | '/artisan/appointments'
     | '/artisan/customers'
     | '/artisan/dashboard'
@@ -211,6 +271,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  AdminActivityRoute: typeof AdminActivityRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   ArtisanAppointmentsRoute: typeof ArtisanAppointmentsRoute
   ArtisanCustomersRoute: typeof ArtisanCustomersRoute
   ArtisanDashboardRoute: typeof ArtisanDashboardRoute
@@ -332,6 +397,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtisanAppointmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/categories': {
+      id: '/admin/categories'
+      path: '/admin/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/admin/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -339,6 +439,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  AdminActivityRoute: AdminActivityRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminUsersRoute: AdminUsersRoute,
   ArtisanAppointmentsRoute: ArtisanAppointmentsRoute,
   ArtisanCustomersRoute: ArtisanCustomersRoute,
   ArtisanDashboardRoute: ArtisanDashboardRoute,
