@@ -3,11 +3,22 @@ import { supabase } from "@/lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 import type { AppRole } from "@/types/database";
 
+interface Profile {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  location: string | null;
+  specialization: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
-  profile: any | null;
+  profile: Profile | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -21,16 +32,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
-    const [roleRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).single(),
-      supabase.from("profiles").select("*").eq("id", userId).single(),
-    ]);
-    if (roleRes.data) setRole(roleRes.data.role as AppRole);
-    if (profileRes.data) setProfile(profileRes.data);
+    try {
+      const [roleRes, profileRes] = await Promise.all([
+        supabase.from("user_roles" as any).select("role").eq("user_id", userId).single(),
+        supabase.from("profiles" as any).select("*").eq("id", userId).single(),
+      ]);
+      if (roleRes.data) setRole((roleRes.data as any).role as AppRole);
+      if (profileRes.data) setProfile(profileRes.data as any);
+    } catch (e) {
+      console.error("Error fetching user data:", e);
+    }
   };
 
   useEffect(() => {
@@ -67,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error };
 
     if (data.user) {
-      await supabase.from("profiles").insert({
+      await (supabase.from("profiles" as any) as any).insert({
         id: data.user.id,
         full_name: fullName,
         is_active: true,
       });
-      await supabase.from("user_roles").insert({
+      await (supabase.from("user_roles" as any) as any).insert({
         user_id: data.user.id,
         role: selectedRole,
       });
