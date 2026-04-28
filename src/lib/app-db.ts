@@ -59,10 +59,15 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
+function mergeMissingById<T extends { id: string }>(rows: T[], seedRows: T[]): T[] {
+  const ids = new Set(rows.map((row) => row.id));
+  return [...rows, ...seedRows.filter((row) => !ids.has(row.id))];
+}
+
 function normalizeState(state: Partial<AppState>): AppState {
   const seed = createSeedState();
 
-  return {
+  const normalized = {
     sessionUserId: state.sessionUserId ?? seed.sessionUserId,
     authUsers: Array.isArray(state.authUsers) ? state.authUsers : seed.authUsers,
     tables: {
@@ -77,6 +82,22 @@ function normalizeState(state: Partial<AppState>): AppState {
       feedback: Array.isArray(state.tables?.feedback) ? state.tables.feedback : seed.tables.feedback,
       quotes: Array.isArray(state.tables?.quotes) ? state.tables.quotes : seed.tables.quotes,
       work_requests: Array.isArray(state.tables?.work_requests) ? state.tables.work_requests : seed.tables.work_requests,
+    },
+  };
+
+  return {
+    ...normalized,
+    authUsers: mergeMissingById(normalized.authUsers, seed.authUsers),
+    tables: {
+      profiles: mergeMissingById(normalized.tables.profiles, seed.tables.profiles),
+      user_roles: mergeMissingById(normalized.tables.user_roles, seed.tables.user_roles),
+      service_categories: mergeMissingById(normalized.tables.service_categories, seed.tables.service_categories),
+      customers: mergeMissingById(normalized.tables.customers, seed.tables.customers),
+      service_records: mergeMissingById(normalized.tables.service_records, seed.tables.service_records),
+      appointments: mergeMissingById(normalized.tables.appointments, seed.tables.appointments),
+      feedback: mergeMissingById(normalized.tables.feedback, seed.tables.feedback),
+      quotes: mergeMissingById(normalized.tables.quotes, seed.tables.quotes),
+      work_requests: mergeMissingById(normalized.tables.work_requests, seed.tables.work_requests),
     },
   };
 }
@@ -157,6 +178,8 @@ function createSeedState(): AppState {
   const createdAt = nowIso();
   const adminId = "user-admin";
   const artisanId = "user-artisan";
+  const accraArtisanId = "user-artisan-accra";
+  const temaArtisanId = "user-artisan-tema";
   const customerId = "user-customer";
   const appointmentId = "appointment-seed-1";
   const customerRecordId = "customer-seed-1";
@@ -171,6 +194,8 @@ function createSeedState(): AppState {
     authUsers: [
       { id: adminId, email: "admin@artisancrm.local", password: "password123", full_name: "Admin User", role: "admin" },
       { id: artisanId, email: "artisan@artisancrm.local", password: "password123", full_name: "Kojo Mensah", role: "artisan" },
+      { id: accraArtisanId, email: "plumber@artisancrm.local", password: "password123", full_name: "Esi Boateng", role: "artisan" },
+      { id: temaArtisanId, email: "carpenter@artisancrm.local", password: "password123", full_name: "Yaw Tetteh", role: "artisan" },
       { id: customerId, email: "customer@artisancrm.local", password: "password123", full_name: "Ama Owusu", role: "customer" },
     ],
     tables: {
@@ -200,6 +225,30 @@ function createSeedState(): AppState {
           updated_at: createdAt,
         },
         {
+          id: accraArtisanId,
+          full_name: "Esi Boateng",
+          phone: "+233 24 222 3311",
+          location: "Madina, Accra",
+          specialization: "Plumbing",
+          bio: "Leak repairs, bathroom fittings, and routine plumbing maintenance.",
+          avatar_url: null,
+          is_active: true,
+          created_at: createdAt,
+          updated_at: createdAt,
+        },
+        {
+          id: temaArtisanId,
+          full_name: "Yaw Tetteh",
+          phone: "+233 27 444 1188",
+          location: "Tema",
+          specialization: "Carpentry",
+          bio: "Custom shelves, door repairs, and furniture assembly.",
+          avatar_url: null,
+          is_active: true,
+          created_at: createdAt,
+          updated_at: createdAt,
+        },
+        {
           id: customerId,
           full_name: "Ama Owusu",
           phone: "+233 55 987 6543",
@@ -215,6 +264,8 @@ function createSeedState(): AppState {
       user_roles: [
         { id: "role-admin", user_id: adminId, role: "admin" },
         { id: "role-artisan", user_id: artisanId, role: "artisan" },
+        { id: "role-artisan-accra", user_id: accraArtisanId, role: "artisan" },
+        { id: "role-artisan-tema", user_id: temaArtisanId, role: "artisan" },
         { id: "role-customer", user_id: customerId, role: "customer" },
       ],
       service_categories: [

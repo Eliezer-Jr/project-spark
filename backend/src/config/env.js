@@ -19,5 +19,19 @@ export const env = {
   dbName: process.env.DB_NAME || "artisan_crm",
   dbUser: process.env.DB_USER || "root",
   dbPassword: process.env.DB_PASSWORD || "",
+  frog: {
+    baseUrl: process.env.FROG_BASE_URL || "https://frogapi.wigal.com.gh",
+    apiKey: process.env.FROG_API_KEY || "",
+    username: process.env.FROG_USERNAME || "",
+    senderId: process.env.FROG_SENDER_ID || "",
+  },
+  email: {
+    host: process.env.SMTP_HOST || "",
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === "true",
+    user: process.env.SMTP_USER || "",
+    password: process.env.SMTP_PASSWORD || "",
+    from: process.env.MAIL_FROM || process.env.SMTP_USER || "",
+  },
   backendRoot,
 };
