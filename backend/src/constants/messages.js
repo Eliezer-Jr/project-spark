@@ -1,7 +1,8 @@
 export const MESSAGES = {
   HEALTH_OK: "Backend is running",
-  INVALID_CREDENTIALS: "Invalid email or password.",
-  USER_EXISTS: "An account with this email already exists.",
+  INVALID_CREDENTIALS: "Invalid phone number or OTP code.",
+  USER_EXISTS: "An account with this phone number already exists.",
+  EMAIL_EXISTS: "An account with this email already exists.",
   USER_DEACTIVATED: "This account has been deactivated.",
   ACCESS_DENIED: "You do not have permission to perform this action.",
   AUTH_REQUIRED: "Authentication is required to access this resource.",

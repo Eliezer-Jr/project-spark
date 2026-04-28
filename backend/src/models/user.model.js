@@ -101,6 +101,34 @@ export const userModel = {
     return rows[0] || null;
   },
 
+  async findByPhone(phone) {
+    const rows = await query(
+      `
+        SELECT
+          id,
+          full_name AS fullName,
+          email,
+          password_hash AS passwordHash,
+          role,
+          phone,
+          location,
+          specialization,
+          bio,
+          avatar_url AS avatarUrl,
+          notify_email AS notifyEmail,
+          notify_sms AS notifySms,
+          is_active AS isActive,
+          created_at AS createdAt,
+          updated_at AS updatedAt
+        FROM users
+        WHERE REPLACE(phone, ' ', '') = ?
+        LIMIT 1
+      `,
+      [phone],
+    );
+    return rows[0] || null;
+  },
+
   async create(payload) {
     const { columns, values } = mapUserFields(payload);
     await query(

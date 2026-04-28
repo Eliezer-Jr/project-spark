@@ -2,8 +2,22 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
-  LayoutDashboard, Users, Calendar, Wrench, MessageSquare, Settings,
-  Search, ClipboardList, BarChart3, FolderCog, Activity, LogOut, Menu, X, FileText, Inbox,
+  LayoutDashboard,
+  Users,
+  Calendar,
+  Wrench,
+  MessageSquare,
+  Settings,
+  Search,
+  ClipboardList,
+  BarChart3,
+  FolderCog,
+  Activity,
+  LogOut,
+  Menu,
+  X,
+  FileText,
+  Inbox,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -43,8 +57,10 @@ export function AppSidebar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const links = role === "artisan" ? artisanLinks : role === "customer" ? customerLinks : adminLinks;
-  const roleLabel = role === "artisan" ? "Artisan Portal" : role === "customer" ? "Customer Portal" : "Admin Panel";
+  const links =
+    role === "artisan" ? artisanLinks : role === "customer" ? customerLinks : adminLinks;
+  const roleLabel =
+    role === "artisan" ? "Artisan Portal" : role === "customer" ? "Customer Portal" : "Admin Panel";
 
   const nav = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -66,13 +82,13 @@ export function AppSidebar() {
           return (
             <Link
               key={link.to}
-              to={link.to as any}
+              to={link.to}
               onClick={() => setMobileOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 active
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
               )}
             >
               <link.icon className="h-4 w-4" />
@@ -105,14 +121,19 @@ export function AppSidebar() {
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "fixed left-0 top-0 z-40 h-screen w-64 transition-transform md:translate-x-0",
-        mobileOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 h-screen w-64 transition-transform md:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         {nav}
       </aside>
     </>

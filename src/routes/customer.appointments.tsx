@@ -3,19 +3,42 @@ import { z } from "zod";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
-import { formatDateLabel, formatTimeLabel, getAvailableTimeSuggestions, getStatusClasses } from "@/lib/crm-helpers";
+import {
+  formatDateLabel,
+  formatTimeLabel,
+  getAvailableTimeSuggestions,
+  getStatusClasses,
+} from "@/lib/crm-helpers";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Sparkles, XCircle, Clock3 } from "lucide-react";
 import { toast } from "sonner";
+import type { Database } from "@/types/database";
+
+type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type UserRole = Database["public"]["Tables"]["user_roles"]["Row"];
 
 const appointmentSearchSchema = z.object({
   artisanId: z.string().optional(),
@@ -25,7 +48,9 @@ export const Route = createFileRoute("/customer/appointments")({
   validateSearch: appointmentSearchSchema,
   component: () => (
     <ProtectedRoute allowedRoles={["customer"]}>
-      <DashboardLayout><CustAppointmentsContent /></DashboardLayout>
+      <DashboardLayout>
+        <CustAppointmentsContent />
+      </DashboardLayout>
     </ProtectedRoute>
   ),
 });
@@ -34,28 +59,38 @@ function CustAppointmentsContent() {
   const navigate = useNavigate({ from: "/customer/appointments" });
   const search = Route.useSearch();
   const { user } = useAuth();
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [allAppointments, setAllAppointments] = useState<any[]>([]);
-  const [artisans, setArtisans] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+  const [artisans, setArtisans] = useState<Profile[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ artisan_id: "", title: "", description: "", scheduled_date: "", scheduled_time: "" });
+  const [form, setForm] = useState({
+    artisan_id: "",
+    title: "",
+    description: "",
+    scheduled_date: "",
+    scheduled_time: "",
+  });
   const [filter, setFilter] = useState<"all" | "upcoming" | "completed" | "cancelled">("all");
 
   const load = async () => {
     if (!user) return;
 
     const [customerAppointmentsRes, allAppointmentsRes] = await Promise.all([
-      db.from("appointments").select("*").eq("customer_user_id", user.id).order("scheduled_date", { ascending: false }),
+      db
+        .from("appointments")
+        .select("*")
+        .eq("customer_user_id", user.id)
+        .order("scheduled_date", { ascending: false }),
       db.from("appointments").select("*"),
     ]);
-    setAppointments((customerAppointmentsRes.data || []) as any[]);
-    setAllAppointments((allAppointmentsRes.data || []) as any[]);
+    setAppointments((customerAppointmentsRes.data || []) as Appointment[]);
+    setAllAppointments((allAppointmentsRes.data || []) as Appointment[]);
 
     const rolesRes = await db.from("user_roles").select("user_id").eq("role", "artisan");
-    const ids = ((rolesRes.data || []) as any[]).map((role: any) => role.user_id);
+    const ids = ((rolesRes.data || []) as UserRole[]).map((role) => role.user_id);
     if (ids.length) {
-      const { data: profiles } = await db.from("profiles").select("id, full_name, specialization, location, bio").in("id", ids);
-      setArtisans((profiles || []) as any[]);
+      const { data: profiles } = await db.from("profiles").select("*").in("id", ids);
+      setArtisans((profiles || []) as Profile[]);
     }
   };
 
@@ -78,7 +113,10 @@ function CustAppointmentsContent() {
   );
 
   const suggestedSlots = useMemo(
-    () => (form.scheduled_date ? getAvailableTimeSuggestions(artisanAppointments, form.scheduled_date, 5) : []),
+    () =>
+      form.scheduled_date
+        ? getAvailableTimeSuggestions(artisanAppointments, form.scheduled_date, 5)
+        : [],
     [artisanAppointments, form.scheduled_date],
   );
 
@@ -102,7 +140,8 @@ function CustAppointmentsContent() {
   });
 
   const handleBook = async () => {
-    if (!user || !form.artisan_id || !form.title || !form.scheduled_date || !form.scheduled_time) return;
+    if (!user || !form.artisan_id || !form.title || !form.scheduled_date || !form.scheduled_time)
+      return;
 
     if (appointmentConflict) {
       toast.error("That time slot is already taken. Try one of the suggested times.");
@@ -153,19 +192,36 @@ function CustAppointmentsContent() {
             onOpenChange={(open) => {
               setDialogOpen(open);
               if (!open) {
-                setForm({ artisan_id: "", title: "", description: "", scheduled_date: "", scheduled_time: "" });
+                setForm({
+                  artisan_id: "",
+                  title: "",
+                  description: "",
+                  scheduled_date: "",
+                  scheduled_time: "",
+                });
                 void navigate({ search: {} });
               }
             }}
           >
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Book Appointment</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Book Appointment
+              </Button>
+            </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
-              <DialogHeader><DialogTitle>Book Appointment</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Book Appointment</DialogTitle>
+              </DialogHeader>
               <div className="space-y-4 mt-2">
                 <div>
                   <Label>Artisan *</Label>
-                  <Select value={form.artisan_id} onValueChange={(value) => setForm({ ...form, artisan_id: value })}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select artisan" /></SelectTrigger>
+                  <Select
+                    value={form.artisan_id}
+                    onValueChange={(value) => setForm({ ...form, artisan_id: value })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select artisan" />
+                    </SelectTrigger>
                     <SelectContent>
                       {artisans.map((artisan) => (
                         <SelectItem key={artisan.id} value={artisan.id}>
@@ -179,40 +235,71 @@ function CustAppointmentsContent() {
                 {selectedArtisan && (
                   <div className="rounded-xl border bg-muted/30 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-foreground">{selectedArtisan.full_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedArtisan.specialization || "General services"}
-                          {selectedArtisan.location ? ` in ${selectedArtisan.location}` : ""}
-                        </p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProfileAvatar
+                          src={selectedArtisan.avatar_url}
+                          name={selectedArtisan.full_name}
+                          className="h-10 w-10 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
+                            {selectedArtisan.full_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedArtisan.specialization || "General services"}
+                            {selectedArtisan.location ? ` in ${selectedArtisan.location}` : ""}
+                          </p>
+                        </div>
                       </div>
                       <Badge variant="secondary" className="gap-1">
                         <Sparkles className="h-3 w-3" />
                         Suggested booking
                       </Badge>
                     </div>
-                    {selectedArtisan.bio && <p className="mt-2 text-sm text-muted-foreground">{selectedArtisan.bio}</p>}
+                    {selectedArtisan.bio && (
+                      <p className="mt-2 text-sm text-muted-foreground">{selectedArtisan.bio}</p>
+                    )}
                   </div>
                 )}
 
                 <div>
                   <Label>Service Needed *</Label>
-                  <Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Fix leaking pipe" className="mt-1" />
+                  <Input
+                    value={form.title}
+                    onChange={(event) => setForm({ ...form, title: event.target.value })}
+                    placeholder="e.g. Fix leaking pipe"
+                    className="mt-1"
+                  />
                 </div>
 
                 <div>
                   <Label>Details</Label>
-                  <Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Describe the issue or what you need done." className="mt-1 min-h-24" />
+                  <Textarea
+                    value={form.description}
+                    onChange={(event) => setForm({ ...form, description: event.target.value })}
+                    placeholder="Describe the issue or what you need done."
+                    className="mt-1 min-h-24"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Date *</Label>
-                    <Input type="date" value={form.scheduled_date} onChange={(event) => setForm({ ...form, scheduled_date: event.target.value })} className="mt-1" />
+                    <Input
+                      type="date"
+                      value={form.scheduled_date}
+                      onChange={(event) => setForm({ ...form, scheduled_date: event.target.value })}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <Label>Time *</Label>
-                    <Input type="time" value={form.scheduled_time} onChange={(event) => setForm({ ...form, scheduled_time: event.target.value })} className="mt-1" />
+                    <Input
+                      type="time"
+                      value={form.scheduled_time}
+                      onChange={(event) => setForm({ ...form, scheduled_time: event.target.value })}
+                      className="mt-1"
+                    />
                   </div>
                 </div>
 
@@ -225,12 +312,20 @@ function CustAppointmentsContent() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       {suggestedSlots.length ? (
                         suggestedSlots.map((slot) => (
-                          <Button key={slot} type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, scheduled_time: slot })}>
+                          <Button
+                            key={slot}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setForm({ ...form, scheduled_time: slot })}
+                          >
                             {formatTimeLabel(slot)}
                           </Button>
                         ))
                       ) : (
-                        <span className="text-sm text-muted-foreground">No open suggestions for this date.</span>
+                        <span className="text-sm text-muted-foreground">
+                          No open suggestions for this date.
+                        </span>
                       )}
                     </div>
                   </div>
@@ -238,11 +333,14 @@ function CustAppointmentsContent() {
 
                 {appointmentConflict && (
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-                    This artisan already has an active booking at that time. Choose another suggestion to continue.
+                    This artisan already has an active booking at that time. Choose another
+                    suggestion to continue.
                   </div>
                 )}
 
-                <Button onClick={handleBook} className="w-full">Book Now</Button>
+                <Button onClick={handleBook} className="w-full">
+                  Book Now
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -275,7 +373,8 @@ function CustAppointmentsContent() {
         <div className="space-y-3">
           {filteredAppointments.map((appointment) => {
             const artisan = artisans.find((item) => item.id === appointment.artisan_id);
-            const canCancel = appointment.status === "pending" || appointment.status === "confirmed";
+            const canCancel =
+              appointment.status === "pending" || appointment.status === "confirmed";
 
             return (
               <div key={appointment.id} className="rounded-xl border bg-card p-5 shadow-sm">
@@ -283,24 +382,42 @@ function CustAppointmentsContent() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-card-foreground">{appointment.title}</h3>
-                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(appointment.status)}`}>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(appointment.status)}`}
+                      >
                         {appointment.status}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {formatDateLabel(appointment.scheduled_date)} at {formatTimeLabel(appointment.scheduled_time)}
+                      {formatDateLabel(appointment.scheduled_date)} at{" "}
+                      {formatTimeLabel(appointment.scheduled_time)}
                     </p>
                     {artisan && (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        With {artisan.full_name}
-                        {artisan.specialization ? ` - ${artisan.specialization}` : ""}
-                      </p>
+                      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                        <ProfileAvatar
+                          src={artisan.avatar_url}
+                          name={artisan.full_name}
+                          className="h-7 w-7 shrink-0"
+                          fallbackClassName="text-xs"
+                        />
+                        <span>
+                          With {artisan.full_name}
+                          {artisan.specialization ? ` - ${artisan.specialization}` : ""}
+                        </span>
+                      </div>
                     )}
-                    {appointment.description && <p className="mt-3 text-sm text-card-foreground">{appointment.description}</p>}
+                    {appointment.description && (
+                      <p className="mt-3 text-sm text-card-foreground">{appointment.description}</p>
+                    )}
                   </div>
 
                   {canCancel && (
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => cancelAppointment(appointment.id)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => cancelAppointment(appointment.id)}
+                    >
                       <XCircle className="h-4 w-4" />
                       Cancel
                     </Button>

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/app-db";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -20,9 +21,6 @@ import {
   Star,
   Wrench,
   BriefcaseBusiness,
-  Hammer,
-  Plug,
-  Droplets,
   Navigation,
   SlidersHorizontal,
 } from "lucide-react";
@@ -32,7 +30,7 @@ import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/types/database";
 import "leaflet/dist/leaflet.css";
 
-const SEARCH_RADIUS_KM = 10; // 10 km radius for nearby artisans
+const SEARCH_RADIUS_KM = 5; // 5 km radius for nearby artisans
 const GEOCODE_CACHE_KEY = "artisancrm.geocode-cache.v1";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -141,19 +139,29 @@ function distanceBetweenKm(from: Coordinates, to: Coordinates) {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function getArtisanToolIcon(specialization?: string | null) {
-  const skill = specialization?.toLowerCase() ?? "";
-  if (skill.includes("plumb")) return Droplets;
-  if (skill.includes("electric")) return Plug;
-  if (skill.includes("carpent")) return Hammer;
-  return Wrench;
-}
-
-const artisanMarkerHtml =
+const artisanToolMarkerHtml =
   '<div class="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-accent text-accent-foreground shadow-md">' +
   '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
   '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-5.8 5.8a2.1 2.1 0 0 0 3 3l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.7 2.7-3-3 2.7-2.7Z"/>' +
   "</svg></div>";
+
+function escapeAttribute(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function getArtisanMarkerHtml(artisan: Profile) {
+  if (!artisan.avatar_url) return artisanToolMarkerHtml;
+
+  return `<div class="h-10 w-10 overflow-hidden rounded-full border-2 border-white bg-background shadow-md"><img src="${escapeAttribute(
+    artisan.avatar_url,
+  )}" alt="${escapeAttribute(
+    artisan.full_name,
+  )} profile image" class="h-full w-full object-cover" /></div>`;
+}
 
 export const Route = createFileRoute("/customer/browse")({
   component: () => (
@@ -452,9 +460,11 @@ function BrowseContent() {
               {selectedArtisan ? (
                 <div className="rounded-lg border bg-background p-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <ArtisanToolIcon specialization={selectedArtisan.specialization} />
-                    </div>
+                    <ProfileAvatar
+                      src={selectedArtisan.avatar_url}
+                      name={selectedArtisan.full_name}
+                      className="h-11 w-11 shrink-0"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -560,9 +570,11 @@ function BrowseContent() {
                 className="rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <ArtisanToolIcon specialization={a.specialization} />
-                  </div>
+                  <ProfileAvatar
+                    src={a.avatar_url}
+                    name={a.full_name}
+                    className="h-12 w-12 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -653,11 +665,6 @@ function BrowseContent() {
   );
 }
 
-function ArtisanToolIcon({ specialization }: { specialization?: string | null }) {
-  const Icon = getArtisanToolIcon(specialization);
-  return <Icon className="h-5 w-5" />;
-}
-
 function ArtisanMap({
   center,
   artisans,
@@ -733,7 +740,7 @@ function ArtisanMap({
         const stats = statsByArtisan[artisan.id];
         const popup = document.createElement("div");
         const header = document.createElement("div");
-        const icon = document.createElement("div");
+        const icon = document.createElement(artisan.avatar_url ? "img" : "div");
         const titleWrap = document.createElement("div");
         const name = document.createElement("strong");
         const specialty = document.createElement("div");
@@ -747,10 +754,16 @@ function ArtisanMap({
 
         popup.className = "w-64 space-y-3";
         header.className = "flex items-start gap-3";
-        icon.className =
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary";
-        icon.innerHTML =
-          '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-5.8 5.8a2.1 2.1 0 0 0 3 3l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.7 2.7-3-3 2.7-2.7Z"/></svg>';
+        icon.className = artisan.avatar_url
+          ? "h-10 w-10 shrink-0 rounded-full border object-cover"
+          : "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary";
+        if (artisan.avatar_url) {
+          (icon as HTMLImageElement).src = artisan.avatar_url;
+          (icon as HTMLImageElement).alt = `${artisan.full_name} profile image`;
+        } else {
+          icon.innerHTML =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-5.8 5.8a2.1 2.1 0 0 0 3 3l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.7 2.7-3-3 2.7-2.7Z"/></svg>';
+        }
         titleWrap.className = "min-w-0";
         name.className = "block truncate text-sm text-foreground";
         specialty.className = "text-xs text-muted-foreground";
@@ -779,9 +792,9 @@ function ArtisanMap({
         L.marker([coordinates.lat, coordinates.lng], {
           icon: L.divIcon({
             className: "",
-            html: artisanMarkerHtml,
-            iconSize: [36, 36],
-            iconAnchor: [18, 18],
+            html: getArtisanMarkerHtml(artisan),
+            iconSize: artisan.avatar_url ? [40, 40] : [36, 36],
+            iconAnchor: artisan.avatar_url ? [20, 20] : [18, 18],
           }),
         })
           .on("click", (event) => {

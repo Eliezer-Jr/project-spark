@@ -46,9 +46,20 @@ function ensureBodyNotEmpty(body, message = "At least one field must be provided
 
 export function validateLogin(req, _res, next) {
   try {
-    ensure(!isEmpty(req.body.email), "Email is required.");
-    ensure(!isEmpty(req.body.password), "Password is required.");
-    ensureEmail(req.body.email, "A valid email address is required.");
+    ensure(!isEmpty(req.body.phone), "Phone number is required.");
+    ensure(!isEmpty(req.body.otpcode), "OTP code is required.");
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function validateOtpRequest(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body.phone), "Phone number is required.");
+    if (isProvided(req.body.purpose)) {
+      ensureEnum(req.body.purpose, ["login", "signup"], "OTP purpose must be login or signup.");
+    }
     next();
   } catch (error) {
     next(error);
@@ -58,10 +69,11 @@ export function validateLogin(req, _res, next) {
 export function validateSignup(req, _res, next) {
   try {
     ensure(!isEmpty(req.body.fullName), "Full name is required.");
-    ensure(!isEmpty(req.body.email), "Email is required.");
-    ensure(!isEmpty(req.body.password), "Password is required.");
-    ensureEmail(req.body.email, "A valid email address is required.");
-    ensure(String(req.body.password).length >= 6, "Password must be at least 6 characters.");
+    ensure(!isEmpty(req.body.phone), "Phone number is required.");
+    ensure(!isEmpty(req.body.otpcode), "OTP code is required.");
+    if (isProvided(req.body.email) && !isEmpty(req.body.email)) {
+      ensureEmail(req.body.email, "A valid email address is required.");
+    }
     if (isProvided(req.body.role)) {
       ensureEnum(req.body.role, APP_ROLES, "Role must be admin, artisan or customer.");
     }

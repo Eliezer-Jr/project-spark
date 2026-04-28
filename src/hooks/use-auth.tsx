@@ -21,13 +21,18 @@ interface AuthContextType {
   role: AppRole | null;
   profile: Profile | null;
   loading: boolean;
+  requestOtp: (
+    phone: string,
+    purpose: "login" | "signup",
+  ) => Promise<{ error: Error | null; devOtp?: string }>;
   signUp: (
-    email: string,
-    password: string,
+    phone: string,
+    otpcode: string,
     fullName: string,
     role: AppRole,
+    email?: string,
   ) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (phone: string, otpcode: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -81,23 +86,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const requestOtp = async (phone: string, purpose: "login" | "signup") => {
+    const { data, error } = await db.auth.requestOtp({ phone, purpose });
+    return { error, devOtp: data?.devOtp };
+  };
+
   const signUp = async (
-    email: string,
-    password: string,
+    phone: string,
+    otpcode: string,
     fullName: string,
     selectedRole: AppRole,
+    email?: string,
   ) => {
-    const { error } = await db.auth.signUp({
+    const { error } = await db.auth.signUpWithOtp({
+      phone,
+      otpcode,
       email,
-      password,
       options: { data: { full_name: fullName, role: selectedRole } },
     });
     if (!error) setRole(selectedRole);
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await db.auth.signInWithPassword({ email, password });
+  const signIn = async (phone: string, otpcode: string) => {
+    const { error } = await db.auth.signInWithOtp({ phone, otpcode });
     return { error };
   };
 
@@ -113,7 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, role, profile, loading, signUp, signIn, signOut, refreshProfile }}
+      value={{
+        user,
+        session,
+        role,
+        profile,
+        loading,
+        requestOtp,
+        signUp,
+        signIn,
+        signOut,
+        refreshProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

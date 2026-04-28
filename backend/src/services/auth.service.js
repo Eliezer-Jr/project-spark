@@ -5,8 +5,9 @@ import { HTTP_STATUS } from "../constants/http-status.js";
 import { userModel } from "../models/user.model.js";
 import { sendWelcomeEmail } from "../mail/mailer.js";
 import { createId } from "../utils/id.js";
-import { hashPassword, verifyPassword } from "../utils/password.js";
+import { hashPassword } from "../utils/password.js";
 import { createAccessToken } from "../utils/token.js";
+import { smsService } from "./sms.service.js";
 
 function sanitizeUser(user) {
   const { passwordHash, ...safeUser } = user;
@@ -16,15 +17,50 @@ function sanitizeUser(user) {
   };
 }
 
+function normalizePhone(phone) {
+  return String(phone || "").replace(/\s+/g, "");
+}
+
+function createPlaceholderEmail(phone) {
+  const safePhone = normalizePhone(phone).replace(/[^\d+]/g, "").replace(/^\+/, "");
+  return `${safePhone || createId()}@phone.artisancrm.local`;
+}
+
 export const authService = {
-  async login(email, password) {
-    if (!email?.trim() || !password) {
-      throw new AppError("Email and password are required.", HTTP_STATUS.BAD_REQUEST);
+  async requestOtp({ phone, purpose = "login" }) {
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      throw new AppError("Phone number is required.", HTTP_STATUS.BAD_REQUEST);
     }
 
-    const user = await userModel.findByEmail(email);
+    if (!["login", "signup"].includes(purpose)) {
+      throw new AppError("OTP purpose must be login or signup.", HTTP_STATUS.BAD_REQUEST);
+    }
 
-    if (!user || !verifyPassword(password, user.passwordHash)) {
+    const existingUser = await userModel.findByPhone(normalizedPhone);
+    if (purpose === "login" && !existingUser) {
+      throw new AppError(MESSAGES.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
+    }
+
+    if (purpose === "signup" && existingUser) {
+      throw new AppError(MESSAGES.USER_EXISTS, HTTP_STATUS.CONFLICT);
+    }
+
+    return smsService.generateOtp({
+      number: normalizedPhone,
+      messageTemplate: "Your %SERVICE% sign-in code is %OTPCODE%. It expires in %EXPIRY% minutes.",
+    });
+  },
+
+  async login({ phone, otpcode }) {
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone || !otpcode?.trim()) {
+      throw new AppError("Phone number and OTP code are required.", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const user = await userModel.findByPhone(normalizedPhone);
+
+    if (!user) {
       throw new AppError(MESSAGES.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -32,34 +68,47 @@ export const authService = {
       throw new AppError(MESSAGES.USER_DEACTIVATED, HTTP_STATUS.UNAUTHORIZED);
     }
 
+    await smsService.verifyOtp({ number: normalizedPhone, otpcode });
+
     return {
       token: createAccessToken(user),
       user: sanitizeUser(user),
     };
   },
 
-  async signup({ email, password, fullName, role = "customer" }) {
-    if (!email?.trim() || !password || !fullName?.trim()) {
-      throw new AppError("Full name, email and password are required.", HTTP_STATUS.BAD_REQUEST);
+  async signup({ phone, otpcode, fullName, email, role = "customer" }) {
+    const normalizedPhone = normalizePhone(phone);
+    const normalizedEmail = email?.trim()?.toLowerCase() || null;
+    if (!normalizedPhone || !otpcode?.trim() || !fullName?.trim()) {
+      throw new AppError("Full name, phone number and OTP code are required.", HTTP_STATUS.BAD_REQUEST);
     }
 
-    const existingUser = await userModel.findByEmail(email);
+    const existingUser = await userModel.findByPhone(normalizedPhone);
     if (existingUser) {
       throw new AppError(MESSAGES.USER_EXISTS, HTTP_STATUS.CONFLICT);
+    }
+
+    if (normalizedEmail) {
+      const existingEmailUser = await userModel.findByEmail(normalizedEmail);
+      if (existingEmailUser) {
+        throw new AppError(MESSAGES.EMAIL_EXISTS, HTTP_STATUS.CONFLICT);
+      }
     }
 
     if (!APP_ROLES.includes(role)) {
       throw new AppError("Invalid role selected.", HTTP_STATUS.BAD_REQUEST);
     }
 
+    await smsService.verifyOtp({ number: normalizedPhone, otpcode });
+
     const timestamp = new Date().toISOString();
     const user = await userModel.create({
       id: createId(),
-      email: email.trim().toLowerCase(),
-      passwordHash: hashPassword(password),
+      email: normalizedEmail || createPlaceholderEmail(normalizedPhone),
+      passwordHash: hashPassword(createId()),
       fullName: fullName.trim(),
       role,
-      phone: null,
+      phone: normalizedPhone,
       location: null,
       specialization: null,
       bio: null,
@@ -71,7 +120,9 @@ export const authService = {
       updatedAt: timestamp,
     });
 
-    await sendWelcomeEmail(user);
+    if (user.email && !user.email.endsWith("@phone.artisancrm.local")) {
+      await sendWelcomeEmail(user);
+    }
 
     return {
       token: createAccessToken(user),

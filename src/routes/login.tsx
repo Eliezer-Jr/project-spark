@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
@@ -11,28 +12,37 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { signIn, role } = useAuth();
+  const { requestOtp, signIn, role } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otpcode, setOtpcode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = otpSent
+      ? await signIn(phone, otpcode)
+      : await requestOtp(phone, "login");
     setLoading(false);
+
     if (error) {
       toast.error(error.message);
+    } else if (!otpSent) {
+      setOtpSent(true);
+      toast.success("OTP sent. Use 12345 in local demo mode.");
     } else {
       toast.success("Welcome back!");
-      // Role will be loaded by auth context, redirect handled by effect
     }
   };
 
-  // Redirect if already logged in
   if (role) {
-    const redirectMap = { artisan: "/artisan/dashboard", customer: "/customer/dashboard", admin: "/admin/dashboard" } as const;
+    const redirectMap = {
+      artisan: "/artisan/dashboard",
+      customer: "/customer/dashboard",
+      admin: "/admin/dashboard",
+    } as const;
     navigate({ to: redirectMap[role] as any });
     return null;
   }
@@ -43,20 +53,51 @@ function LoginPage() {
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">A</div>
           <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your ArtisanCRM account</p>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in with your phone number</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className="mt-1" />
+            <Label htmlFor="phone">Phone Number</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+233 55 987 6543"
+              required
+              className="mt-1"
+              disabled={otpSent || loading}
+            />
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="mt-1" />
-          </div>
+          {otpSent && (
+            <div>
+              <Label htmlFor="otp">OTP Code</Label>
+              <InputOTP id="otp" maxLength={5} value={otpcode} onChange={setOtpcode} className="mt-2">
+                <InputOTPGroup>
+                  {[0, 1, 2, 3, 4].map((index) => (
+                    <InputOTPSlot key={index} index={index} />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Please wait..." : otpSent ? "Verify and Sign In" : "Send OTP"}
           </Button>
+          {otpSent && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setOtpSent(false);
+                setOtpcode("");
+              }}
+              disabled={loading}
+            >
+              Use a different number
+            </Button>
+          )}
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Don't have an account?{" "}

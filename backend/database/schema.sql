@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(150) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('admin', 'artisan', 'customer') NOT NULL DEFAULT 'customer',
-  phone VARCHAR(30),
+  phone VARCHAR(30) UNIQUE,
   location VARCHAR(150),
   specialization VARCHAR(120),
   bio TEXT,

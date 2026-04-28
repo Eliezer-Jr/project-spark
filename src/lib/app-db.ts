@@ -7,6 +7,7 @@ type TableRow<T extends TableName> = Tables[T]["Row"];
 export interface AuthUser {
   id: string;
   email: string;
+  phone: string;
   user_metadata: {
     full_name?: string;
     role?: AppRole;
@@ -23,6 +24,7 @@ interface StoredAuthUser {
   id: string;
   email: string;
   password: string;
+  phone: string;
   full_name: string;
   role: AppRole;
 }
@@ -73,12 +75,32 @@ function normalizeProfiles(rows: TableRow<"profiles">[]): TableRow<"profiles">[]
   }));
 }
 
+function normalizeAuthUsers(
+  rows: Partial<StoredAuthUser>[],
+  profiles: TableRow<"profiles">[],
+): StoredAuthUser[] {
+  return rows
+    .filter((row): row is Partial<StoredAuthUser> & { id: string } => Boolean(row.id))
+    .map((row) => {
+      const profile = profiles.find((candidate) => candidate.id === row.id);
+      const phone = row.phone || profile?.phone || "";
+      return {
+        id: row.id,
+        email: row.email || `${normalizePhone(phone).replace(/^\+/, "")}@phone.artisancrm.local`,
+        password: row.password || "",
+        phone: normalizePhone(phone),
+        full_name: row.full_name || profile?.full_name || "New User",
+        role: row.role ?? "customer",
+      };
+    });
+}
+
 function normalizeState(state: Partial<AppState>): AppState {
   const seed = createSeedState();
 
   const normalized = {
     sessionUserId: state.sessionUserId ?? seed.sessionUserId,
-    authUsers: Array.isArray(state.authUsers) ? state.authUsers : seed.authUsers,
+    authUsers: Array.isArray(state.authUsers) ? [] : seed.authUsers,
     tables: {
       profiles: Array.isArray(state.tables?.profiles)
         ? normalizeProfiles(state.tables.profiles)
@@ -110,7 +132,12 @@ function normalizeState(state: Partial<AppState>): AppState {
 
   return {
     ...normalized,
-    authUsers: mergeMissingById(normalized.authUsers, seed.authUsers),
+    authUsers: mergeMissingById(
+      Array.isArray(state.authUsers)
+        ? normalizeAuthUsers(state.authUsers, normalized.tables.profiles)
+        : normalized.authUsers,
+      seed.authUsers,
+    ),
     tables: {
       profiles: mergeMissingById(normalized.tables.profiles, seed.tables.profiles),
       user_roles: mergeMissingById(normalized.tables.user_roles, seed.tables.user_roles),
@@ -181,11 +208,22 @@ function createAuthUser(user: StoredAuthUser): AuthUser {
   return {
     id: user.id,
     email: user.email,
+    phone: user.phone,
     user_metadata: {
       full_name: user.full_name,
       role: user.role,
     },
   };
+}
+
+function normalizePhone(phone: string) {
+  return phone.replace(/\s+/g, "");
+}
+
+function assertLocalOtp(otpcode: string) {
+  if (otpcode.trim() !== "12345") {
+    throw new Error("Invalid OTP code. Use 12345 in local demo mode.");
+  }
 }
 
 function getStoredUserById(state: AppState, id: string | null) {
@@ -225,6 +263,7 @@ function createSeedState(): AppState {
         id: adminId,
         email: "admin@artisancrm.local",
         password: "password123",
+        phone: "+233200000000",
         full_name: "Admin User",
         role: "admin",
       },
@@ -232,6 +271,7 @@ function createSeedState(): AppState {
         id: artisanId,
         email: "artisan@artisancrm.local",
         password: "password123",
+        phone: "+233241234567",
         full_name: "Kojo Mensah",
         role: "artisan",
       },
@@ -239,6 +279,7 @@ function createSeedState(): AppState {
         id: accraArtisanId,
         email: "plumber@artisancrm.local",
         password: "password123",
+        phone: "+233242223311",
         full_name: "Esi Boateng",
         role: "artisan",
       },
@@ -246,6 +287,7 @@ function createSeedState(): AppState {
         id: temaArtisanId,
         email: "carpenter@artisancrm.local",
         password: "password123",
+        phone: "+233274441188",
         full_name: "Yaw Tetteh",
         role: "artisan",
       },
@@ -253,6 +295,7 @@ function createSeedState(): AppState {
         id: customerId,
         email: "customer@artisancrm.local",
         password: "password123",
+        phone: "+233559876543",
         full_name: "Ama Owusu",
         role: "customer",
       },
@@ -750,30 +793,72 @@ export const db = {
       };
     },
 
-    async signUp({
-      email,
-      password,
-      options,
+    async requestOtp({
+      phone,
+      purpose,
     }: {
-      email: string;
-      password: string;
-      options?: { data?: { full_name?: string; role?: AppRole } };
-    }): Promise<{ data: { user: AuthUser | null }; error: Error | null }> {
-      const normalizedEmail = email.trim().toLowerCase();
+      phone: string;
+      purpose: "login" | "signup";
+    }): Promise<{ error: Error | null; data: { devOtp: string } | null }> {
+      const normalizedPhone = normalizePhone(phone);
 
       try {
+        if (!normalizedPhone) throw new Error("Phone number is required.");
+
+        const state = readState();
+        const existing = state.authUsers.find((candidate) => candidate.phone === normalizedPhone);
+
+        if (purpose === "login" && !existing) {
+          throw new Error("No account found for this phone number.");
+        }
+
+        if (purpose === "signup" && existing) {
+          throw new Error("An account with this phone number already exists.");
+        }
+
+        return { data: { devOtp: "12345" }, error: null };
+      } catch (error) {
+        return { data: null, error: error as Error };
+      }
+    },
+
+    async signUpWithOtp({
+      phone,
+      otpcode,
+      email,
+      options,
+    }: {
+      phone: string;
+      otpcode: string;
+      email?: string;
+      options?: { data?: { full_name?: string; role?: AppRole } };
+    }): Promise<{ data: { user: AuthUser | null }; error: Error | null }> {
+      const normalizedPhone = normalizePhone(phone);
+      const normalizedEmail = email?.trim().toLowerCase() || "";
+
+      try {
+        assertLocalOtp(otpcode);
+
         const user = mutateState((state) => {
           const existing = state.authUsers.find(
-            (candidate) => candidate.email.toLowerCase() === normalizedEmail,
+            (candidate) => candidate.phone === normalizedPhone,
           );
           if (existing) {
+            throw new Error("An account with this phone number already exists.");
+          }
+
+          if (
+            normalizedEmail &&
+            state.authUsers.some((candidate) => candidate.email.toLowerCase() === normalizedEmail)
+          ) {
             throw new Error("An account with this email already exists.");
           }
 
           const newUser: StoredAuthUser = {
             id: createId("user"),
-            email: normalizedEmail,
-            password,
+            email: normalizedEmail || `${normalizedPhone.replace(/^\+/, "")}@phone.artisancrm.local`,
+            password: "",
+            phone: normalizedPhone,
             full_name: options?.data?.full_name?.trim() || "New User",
             role: options?.data?.role ?? "customer",
           };
@@ -783,6 +868,7 @@ export const db = {
             buildInsertedRow("profiles", {
               id: newUser.id,
               full_name: newUser.full_name,
+              phone: newUser.phone,
               notify_email: true,
               notify_sms: true,
               is_active: true,
@@ -805,22 +891,24 @@ export const db = {
       }
     },
 
-    async signInWithPassword({
-      email,
-      password,
+    async signInWithOtp({
+      phone,
+      otpcode,
     }: {
-      email: string;
-      password: string;
+      phone: string;
+      otpcode: string;
     }): Promise<{ error: Error | null }> {
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPhone = normalizePhone(phone);
 
       try {
+        assertLocalOtp(otpcode);
+
         mutateState((state) => {
           const user = state.authUsers.find(
-            (candidate) => candidate.email.toLowerCase() === normalizedEmail,
+            (candidate) => candidate.phone === normalizedPhone,
           );
-          if (!user || user.password !== password) {
-            throw new Error("Invalid email or password.");
+          if (!user) {
+            throw new Error("Invalid phone number or OTP code.");
           }
 
           const profile = state.tables.profiles.find((candidate) => candidate.id === user.id);
