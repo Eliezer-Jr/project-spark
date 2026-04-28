@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ProfileImageUploader } from "@/components/ProfileImageUploader";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { useState } from "react";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/artisan/settings")({
@@ -30,6 +32,7 @@ function SettingsContent() {
     location: profile?.location || "",
     specialization: profile?.specialization || "",
     bio: profile?.bio || "",
+    avatar_url: profile?.avatar_url || null,
     notify_email: profile?.notify_email ?? true,
     notify_sms: profile?.notify_sms ?? true,
   });
@@ -55,6 +58,11 @@ function SettingsContent() {
         <div className="rounded-xl border bg-card p-5 shadow-sm">
           <h2 className="font-semibold text-card-foreground">Business Profile</h2>
           <div className="mt-4 space-y-4">
+            <ProfileImageUploader
+              value={form.avatar_url}
+              name={form.full_name}
+              onChange={(value) => setForm({ ...form, avatar_url: value })}
+            />
             <div>
               <Label>Full Name</Label>
               <Input
@@ -134,7 +142,8 @@ function SettingsContent() {
             </div>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="gap-2">
+          <Save className="h-4 w-4" />
           {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
   LayoutDashboard, Users, Calendar, Wrench, MessageSquare, Settings,
   Search, ClipboardList, BarChart3, FolderCog, Activity, LogOut, Menu, X, FileText, Inbox,
@@ -48,9 +49,12 @@ export function AppSidebar() {
   const nav = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-sm">
-          A
-        </div>
+        <ProfileAvatar
+          src={profile?.avatar_url}
+          name={profile?.full_name}
+          className="h-9 w-9 border-sidebar-border"
+          fallbackClassName="bg-sidebar-primary text-sm text-sidebar-primary-foreground"
+        />
         <div>
           <p className="font-semibold text-sm">{roleLabel}</p>
           <p className="text-xs text-sidebar-foreground/60">{profile?.full_name || "User"}</p>
