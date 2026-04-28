@@ -1,5 +1,9 @@
 import { HTTP_STATUS } from "../constants/http-status.js";
-import { APP_ROLES, APPOINTMENT_STATUSES, SERVICE_RECORD_STATUSES } from "../constraints/app.constraints.js";
+import {
+  APP_ROLES,
+  APPOINTMENT_STATUSES,
+  SERVICE_RECORD_STATUSES,
+} from "../constraints/app.constraints.js";
 import { AppError } from "../exceptions/AppError.js";
 
 function isEmpty(value) {
@@ -224,9 +228,26 @@ export function validateFeedbackPatch(req, _res, next) {
 
 export function validateProfileUpdate(req, _res, next) {
   try {
-    const allowedFields = ["fullName", "phone", "location", "specialization", "bio", "avatarUrl"];
-    const hasKnownField = Object.keys(req.body || {}).some((field) => allowedFields.includes(field));
+    const allowedFields = [
+      "fullName",
+      "phone",
+      "location",
+      "specialization",
+      "bio",
+      "avatarUrl",
+      "notifyEmail",
+      "notifySms",
+    ];
+    const hasKnownField = Object.keys(req.body || {}).some((field) =>
+      allowedFields.includes(field),
+    );
     ensure(hasKnownField, "At least one valid profile field must be provided.");
+    if (isProvided(req.body.notifyEmail)) {
+      ensure(typeof req.body.notifyEmail === "boolean", "notifyEmail must be a boolean value.");
+    }
+    if (isProvided(req.body.notifySms)) {
+      ensure(typeof req.body.notifySms === "boolean", "notifySms must be a boolean value.");
+    }
     next();
   } catch (error) {
     next(error);

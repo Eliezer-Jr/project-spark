@@ -9,6 +9,8 @@ function sanitizeUser(user) {
   return {
     ...safeUser,
     isActive: Boolean(safeUser.isActive),
+    notifyEmail: Boolean(safeUser.notifyEmail),
+    notifySms: Boolean(safeUser.notifySms),
   };
 }
 
@@ -28,7 +30,9 @@ export const userService = {
     if (filters.search) {
       const search = filters.search.toLowerCase();
       filtered = filtered.filter((user) =>
-        [user.fullName, user.email, user.specialization, user.location].some((value) => value?.toLowerCase().includes(search)),
+        [user.fullName, user.email, user.specialization, user.location].some((value) =>
+          value?.toLowerCase().includes(search),
+        ),
       );
     }
 
@@ -57,10 +61,16 @@ export const userService = {
       ...payload,
       fullName: payload.fullName?.trim() || payload.fullName,
       phone: typeof payload.phone === "string" ? payload.phone.trim() || null : payload.phone,
-      location: typeof payload.location === "string" ? payload.location.trim() || null : payload.location,
+      location:
+        typeof payload.location === "string" ? payload.location.trim() || null : payload.location,
       specialization:
-        typeof payload.specialization === "string" ? payload.specialization.trim() || null : payload.specialization,
+        typeof payload.specialization === "string"
+          ? payload.specialization.trim() || null
+          : payload.specialization,
       bio: typeof payload.bio === "string" ? payload.bio.trim() || null : payload.bio,
+      notifyEmail:
+        typeof payload.notifyEmail === "boolean" ? payload.notifyEmail : payload.notifyEmail,
+      notifySms: typeof payload.notifySms === "boolean" ? payload.notifySms : payload.notifySms,
     });
 
     if (!user) {

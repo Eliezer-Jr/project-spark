@@ -64,6 +64,8 @@ export const authService = {
       specialization: null,
       bio: null,
       avatarUrl: null,
+      notifyEmail: true,
+      notifySms: true,
       isActive: true,
       createdAt: timestamp,
       updatedAt: timestamp,

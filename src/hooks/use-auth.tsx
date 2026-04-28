@@ -10,6 +10,8 @@ interface Profile {
   specialization: string | null;
   bio: string | null;
   avatar_url: string | null;
+  notify_email: boolean;
+  notify_sms: boolean;
   is_active: boolean;
 }
 
@@ -19,8 +21,13 @@ interface AuthContextType {
   role: AppRole | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: AppRole,
+  ) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -58,7 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = db.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -72,7 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, selectedRole: AppRole) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    selectedRole: AppRole,
+  ) => {
     const { error } = await db.auth.signUp({
       email,
       password,
@@ -98,7 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, session, role, profile, loading, signUp, signIn, signOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,13 @@
 export type AppRole = "admin" | "artisan" | "customer";
 
 export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled";
-export type QuoteStatus = "draft" | "awaiting_response" | "changes_requested" | "approved" | "converted" | "archived";
+export type QuoteStatus =
+  | "draft"
+  | "awaiting_response"
+  | "changes_requested"
+  | "approved"
+  | "converted"
+  | "archived";
 export type WorkRequestStatus = "new" | "reviewing" | "scheduled" | "closed";
 
 export interface Database {
@@ -16,6 +22,8 @@ export interface Database {
           specialization: string | null;
           bio: string | null;
           avatar_url: string | null;
+          notify_email: boolean;
+          notify_sms: boolean;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -40,7 +48,10 @@ export interface Database {
           icon: string | null;
           created_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["service_categories"]["Row"], "id" | "created_at">;
+        Insert: Omit<
+          Database["public"]["Tables"]["service_categories"]["Row"],
+          "id" | "created_at"
+        >;
         Update: Partial<Database["public"]["Tables"]["service_categories"]["Insert"]>;
       };
       customers: {
@@ -55,7 +66,10 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["customers"]["Row"], "id" | "created_at" | "updated_at">;
+        Insert: Omit<
+          Database["public"]["Tables"]["customers"]["Row"],
+          "id" | "created_at" | "updated_at"
+        >;
         Update: Partial<Database["public"]["Tables"]["customers"]["Insert"]>;
       };
       service_records: {
@@ -88,7 +102,10 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["appointments"]["Row"], "id" | "created_at" | "updated_at">;
+        Insert: Omit<
+          Database["public"]["Tables"]["appointments"]["Row"],
+          "id" | "created_at" | "updated_at"
+        >;
         Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>;
       };
       feedback: {
@@ -120,7 +137,10 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["quotes"]["Row"], "id" | "created_at" | "updated_at">;
+        Insert: Omit<
+          Database["public"]["Tables"]["quotes"]["Row"],
+          "id" | "created_at" | "updated_at"
+        >;
         Update: Partial<Database["public"]["Tables"]["quotes"]["Insert"]>;
       };
       work_requests: {
@@ -136,7 +156,10 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["work_requests"]["Row"], "id" | "created_at" | "updated_at">;
+        Insert: Omit<
+          Database["public"]["Tables"]["work_requests"]["Row"],
+          "id" | "created_at" | "updated_at"
+        >;
         Update: Partial<Database["public"]["Tables"]["work_requests"]["Insert"]>;
       };
     };

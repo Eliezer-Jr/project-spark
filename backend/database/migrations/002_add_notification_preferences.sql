@@ -1,0 +1,3 @@
+ALTER TABLE users
+  ADD COLUMN notify_email BOOLEAN NOT NULL DEFAULT TRUE AFTER avatar_url,
+  ADD COLUMN notify_sms BOOLEAN NOT NULL DEFAULT TRUE AFTER notify_email;

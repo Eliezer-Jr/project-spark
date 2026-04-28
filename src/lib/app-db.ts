@@ -51,7 +51,8 @@ function nowIso() {
 }
 
 function createId(prefix: string) {
-  const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const random =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `${prefix}-${random}`;
 }
 
@@ -64,6 +65,14 @@ function mergeMissingById<T extends { id: string }>(rows: T[], seedRows: T[]): T
   return [...rows, ...seedRows.filter((row) => !ids.has(row.id))];
 }
 
+function normalizeProfiles(rows: TableRow<"profiles">[]): TableRow<"profiles">[] {
+  return rows.map((row) => ({
+    ...row,
+    notify_email: row.notify_email ?? true,
+    notify_sms: row.notify_sms ?? true,
+  }));
+}
+
 function normalizeState(state: Partial<AppState>): AppState {
   const seed = createSeedState();
 
@@ -71,17 +80,31 @@ function normalizeState(state: Partial<AppState>): AppState {
     sessionUserId: state.sessionUserId ?? seed.sessionUserId,
     authUsers: Array.isArray(state.authUsers) ? state.authUsers : seed.authUsers,
     tables: {
-      profiles: Array.isArray(state.tables?.profiles) ? state.tables.profiles : seed.tables.profiles,
-      user_roles: Array.isArray(state.tables?.user_roles) ? state.tables.user_roles : seed.tables.user_roles,
+      profiles: Array.isArray(state.tables?.profiles)
+        ? normalizeProfiles(state.tables.profiles)
+        : seed.tables.profiles,
+      user_roles: Array.isArray(state.tables?.user_roles)
+        ? state.tables.user_roles
+        : seed.tables.user_roles,
       service_categories: Array.isArray(state.tables?.service_categories)
         ? state.tables.service_categories
         : seed.tables.service_categories,
-      customers: Array.isArray(state.tables?.customers) ? state.tables.customers : seed.tables.customers,
-      service_records: Array.isArray(state.tables?.service_records) ? state.tables.service_records : seed.tables.service_records,
-      appointments: Array.isArray(state.tables?.appointments) ? state.tables.appointments : seed.tables.appointments,
-      feedback: Array.isArray(state.tables?.feedback) ? state.tables.feedback : seed.tables.feedback,
+      customers: Array.isArray(state.tables?.customers)
+        ? state.tables.customers
+        : seed.tables.customers,
+      service_records: Array.isArray(state.tables?.service_records)
+        ? state.tables.service_records
+        : seed.tables.service_records,
+      appointments: Array.isArray(state.tables?.appointments)
+        ? state.tables.appointments
+        : seed.tables.appointments,
+      feedback: Array.isArray(state.tables?.feedback)
+        ? state.tables.feedback
+        : seed.tables.feedback,
       quotes: Array.isArray(state.tables?.quotes) ? state.tables.quotes : seed.tables.quotes,
-      work_requests: Array.isArray(state.tables?.work_requests) ? state.tables.work_requests : seed.tables.work_requests,
+      work_requests: Array.isArray(state.tables?.work_requests)
+        ? state.tables.work_requests
+        : seed.tables.work_requests,
     },
   };
 
@@ -91,9 +114,15 @@ function normalizeState(state: Partial<AppState>): AppState {
     tables: {
       profiles: mergeMissingById(normalized.tables.profiles, seed.tables.profiles),
       user_roles: mergeMissingById(normalized.tables.user_roles, seed.tables.user_roles),
-      service_categories: mergeMissingById(normalized.tables.service_categories, seed.tables.service_categories),
+      service_categories: mergeMissingById(
+        normalized.tables.service_categories,
+        seed.tables.service_categories,
+      ),
       customers: mergeMissingById(normalized.tables.customers, seed.tables.customers),
-      service_records: mergeMissingById(normalized.tables.service_records, seed.tables.service_records),
+      service_records: mergeMissingById(
+        normalized.tables.service_records,
+        seed.tables.service_records,
+      ),
       appointments: mergeMissingById(normalized.tables.appointments, seed.tables.appointments),
       feedback: mergeMissingById(normalized.tables.feedback, seed.tables.feedback),
       quotes: mergeMissingById(normalized.tables.quotes, seed.tables.quotes),
@@ -192,11 +221,41 @@ function createSeedState(): AppState {
   return {
     sessionUserId: null,
     authUsers: [
-      { id: adminId, email: "admin@artisancrm.local", password: "password123", full_name: "Admin User", role: "admin" },
-      { id: artisanId, email: "artisan@artisancrm.local", password: "password123", full_name: "Kojo Mensah", role: "artisan" },
-      { id: accraArtisanId, email: "plumber@artisancrm.local", password: "password123", full_name: "Esi Boateng", role: "artisan" },
-      { id: temaArtisanId, email: "carpenter@artisancrm.local", password: "password123", full_name: "Yaw Tetteh", role: "artisan" },
-      { id: customerId, email: "customer@artisancrm.local", password: "password123", full_name: "Ama Owusu", role: "customer" },
+      {
+        id: adminId,
+        email: "admin@artisancrm.local",
+        password: "password123",
+        full_name: "Admin User",
+        role: "admin",
+      },
+      {
+        id: artisanId,
+        email: "artisan@artisancrm.local",
+        password: "password123",
+        full_name: "Kojo Mensah",
+        role: "artisan",
+      },
+      {
+        id: accraArtisanId,
+        email: "plumber@artisancrm.local",
+        password: "password123",
+        full_name: "Esi Boateng",
+        role: "artisan",
+      },
+      {
+        id: temaArtisanId,
+        email: "carpenter@artisancrm.local",
+        password: "password123",
+        full_name: "Yaw Tetteh",
+        role: "artisan",
+      },
+      {
+        id: customerId,
+        email: "customer@artisancrm.local",
+        password: "password123",
+        full_name: "Ama Owusu",
+        role: "customer",
+      },
     ],
     tables: {
       profiles: [
@@ -208,6 +267,8 @@ function createSeedState(): AppState {
           specialization: null,
           bio: "Platform administrator",
           avatar_url: null,
+          notify_email: true,
+          notify_sms: true,
           is_active: true,
           created_at: createdAt,
           updated_at: createdAt,
@@ -220,6 +281,8 @@ function createSeedState(): AppState {
           specialization: "Electrical",
           bio: "Residential and small business electrical repairs.",
           avatar_url: null,
+          notify_email: true,
+          notify_sms: true,
           is_active: true,
           created_at: createdAt,
           updated_at: createdAt,
@@ -232,6 +295,8 @@ function createSeedState(): AppState {
           specialization: "Plumbing",
           bio: "Leak repairs, bathroom fittings, and routine plumbing maintenance.",
           avatar_url: null,
+          notify_email: true,
+          notify_sms: true,
           is_active: true,
           created_at: createdAt,
           updated_at: createdAt,
@@ -244,6 +309,8 @@ function createSeedState(): AppState {
           specialization: "Carpentry",
           bio: "Custom shelves, door repairs, and furniture assembly.",
           avatar_url: null,
+          notify_email: true,
+          notify_sms: true,
           is_active: true,
           created_at: createdAt,
           updated_at: createdAt,
@@ -256,6 +323,8 @@ function createSeedState(): AppState {
           specialization: null,
           bio: null,
           avatar_url: null,
+          notify_email: true,
+          notify_sms: true,
           is_active: true,
           created_at: createdAt,
           updated_at: createdAt,
@@ -269,9 +338,27 @@ function createSeedState(): AppState {
         { id: "role-customer", user_id: customerId, role: "customer" },
       ],
       service_categories: [
-        { id: categoryElectricalId, name: "Electrical", description: "Wiring, sockets and repairs", icon: "bolt", created_at: createdAt },
-        { id: categoryPlumbingId, name: "Plumbing", description: "Leaks, fittings and pipe work", icon: "droplets", created_at: createdAt },
-        { id: categoryCarpentryId, name: "Carpentry", description: "Furniture and wood repairs", icon: "hammer", created_at: createdAt },
+        {
+          id: categoryElectricalId,
+          name: "Electrical",
+          description: "Wiring, sockets and repairs",
+          icon: "bolt",
+          created_at: createdAt,
+        },
+        {
+          id: categoryPlumbingId,
+          name: "Plumbing",
+          description: "Leaks, fittings and pipe work",
+          icon: "droplets",
+          created_at: createdAt,
+        },
+        {
+          id: categoryCarpentryId,
+          name: "Carpentry",
+          description: "Furniture and wood repairs",
+          icon: "hammer",
+          created_at: createdAt,
+        },
       ],
       customers: [
         {
@@ -374,6 +461,8 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         specialization: (input.specialization as string | null) ?? null,
         bio: (input.bio as string | null) ?? null,
         avatar_url: (input.avatar_url as string | null) ?? null,
+        notify_email: (input.notify_email as boolean | undefined) ?? true,
+        notify_sms: (input.notify_sms as boolean | undefined) ?? true,
         is_active: (input.is_active as boolean | undefined) ?? true,
         created_at: (input.created_at as string | undefined) ?? timestamp,
         updated_at: timestamp,
@@ -517,7 +606,9 @@ class SelectQueryBuilder<T extends TableName> implements PromiseLike<QueryRespon
   }
 
   then<TResult1 = QueryResponse<TableRow<T>[]>, TResult2 = never>(
-    onfulfilled?: ((value: QueryResponse<TableRow<T>[]>) => TResult1 | PromiseLike<TResult1>) | null,
+    onfulfilled?:
+      | ((value: QueryResponse<TableRow<T>[]>) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
@@ -550,7 +641,9 @@ class SelectQueryBuilder<T extends TableName> implements PromiseLike<QueryRespon
   }
 }
 
-class MutationQueryBuilder<T extends TableName> implements PromiseLike<QueryResponse<TableRow<T>[]>> {
+class MutationQueryBuilder<T extends TableName> implements PromiseLike<
+  QueryResponse<TableRow<T>[]>
+> {
   private filters: Filter<T>[] = [];
 
   constructor(
@@ -570,7 +663,9 @@ class MutationQueryBuilder<T extends TableName> implements PromiseLike<QueryResp
   }
 
   then<TResult1 = QueryResponse<TableRow<T>[]>, TResult2 = never>(
-    onfulfilled?: ((value: QueryResponse<TableRow<T>[]>) => TResult1 | PromiseLike<TResult1>) | null,
+    onfulfilled?:
+      | ((value: QueryResponse<TableRow<T>[]>) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
@@ -616,11 +711,13 @@ class TableClient<T extends TableName> {
     return new SelectQueryBuilder(this.table, options?.count);
   }
 
-  async insert(payload: Partial<TableRow<T>> | Array<Partial<TableRow<T>>>): Promise<QueryResponse<TableRow<T>[]>> {
+  async insert(
+    payload: Partial<TableRow<T>> | Array<Partial<TableRow<T>>>,
+  ): Promise<QueryResponse<TableRow<T>[]>> {
     return mutateState((state) => {
       const inputs = Array.isArray(payload) ? payload : [payload];
       const inserted = inputs.map((item) => buildInsertedRow(this.table, item));
-      state.tables[this.table].push(...inserted as Tables[T]["Row"][]);
+      state.tables[this.table].push(...(inserted as Tables[T]["Row"][]));
       return { data: clone(inserted), error: null };
     });
   }
@@ -666,7 +763,9 @@ export const db = {
 
       try {
         const user = mutateState((state) => {
-          const existing = state.authUsers.find((candidate) => candidate.email.toLowerCase() === normalizedEmail);
+          const existing = state.authUsers.find(
+            (candidate) => candidate.email.toLowerCase() === normalizedEmail,
+          );
           if (existing) {
             throw new Error("An account with this email already exists.");
           }
@@ -680,15 +779,21 @@ export const db = {
           };
 
           state.authUsers.push(newUser);
-          state.tables.profiles.push(buildInsertedRow("profiles", {
-            id: newUser.id,
-            full_name: newUser.full_name,
-            is_active: true,
-          }));
-          state.tables.user_roles.push(buildInsertedRow("user_roles", {
-            user_id: newUser.id,
-            role: newUser.role,
-          }));
+          state.tables.profiles.push(
+            buildInsertedRow("profiles", {
+              id: newUser.id,
+              full_name: newUser.full_name,
+              notify_email: true,
+              notify_sms: true,
+              is_active: true,
+            }),
+          );
+          state.tables.user_roles.push(
+            buildInsertedRow("user_roles", {
+              user_id: newUser.id,
+              role: newUser.role,
+            }),
+          );
           state.sessionUserId = newUser.id;
           return newUser;
         });
@@ -711,7 +816,9 @@ export const db = {
 
       try {
         mutateState((state) => {
-          const user = state.authUsers.find((candidate) => candidate.email.toLowerCase() === normalizedEmail);
+          const user = state.authUsers.find(
+            (candidate) => candidate.email.toLowerCase() === normalizedEmail,
+          );
           if (!user || user.password !== password) {
             throw new Error("Invalid email or password.");
           }

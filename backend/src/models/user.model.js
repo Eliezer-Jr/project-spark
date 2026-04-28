@@ -11,6 +11,8 @@ function mapUserFields(payload = {}) {
     specialization: payload.specialization,
     bio: payload.bio,
     avatar_url: payload.avatarUrl,
+    notify_email: payload.notifyEmail,
+    notify_sms: payload.notifySms,
     is_active: payload.isActive,
   }).filter(([, value]) => value !== undefined);
 
@@ -34,6 +36,8 @@ export const userModel = {
         specialization,
         bio,
         avatar_url AS avatarUrl,
+        notify_email AS notifyEmail,
+        notify_sms AS notifySms,
         is_active AS isActive,
         created_at AS createdAt,
         updated_at AS updatedAt
@@ -55,6 +59,8 @@ export const userModel = {
           specialization,
           bio,
           avatar_url AS avatarUrl,
+          notify_email AS notifyEmail,
+          notify_sms AS notifySms,
           is_active AS isActive,
           created_at AS createdAt,
           updated_at AS updatedAt
@@ -81,6 +87,8 @@ export const userModel = {
           specialization,
           bio,
           avatar_url AS avatarUrl,
+          notify_email AS notifyEmail,
+          notify_sms AS notifySms,
           is_active AS isActive,
           created_at AS createdAt,
           updated_at AS updatedAt
