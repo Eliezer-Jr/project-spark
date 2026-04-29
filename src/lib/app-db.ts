@@ -44,6 +44,8 @@ interface QueryResponse<T> {
 }
 
 const STORAGE_KEY = "artisancrm.local-data.v1";
+const AUTH_TOKEN_KEY = "artisancrm.auth-token";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 const listeners = new Set<(event: AuthChangeEvent, session: AuthSession | null) => void>();
 
 let memoryState: AppState = createSeedState();
@@ -217,13 +219,116 @@ function createAuthUser(user: StoredAuthUser): AuthUser {
 }
 
 function normalizePhone(phone: string) {
-  return phone.replace(/\s+/g, "");
+  const compact = phone.replace(/[^\d+]/g, "");
+  if (!compact) return "";
+
+  if (compact.startsWith("+233")) return compact;
+  if (compact.startsWith("233")) return `+${compact}`;
+  if (compact.startsWith("0")) return `+233${compact.slice(1)}`;
+  if (/^\d{9}$/.test(compact)) return `+233${compact}`;
+
+  return compact;
 }
 
-function assertLocalOtp(otpcode: string) {
-  if (otpcode.trim() !== "12345") {
-    throw new Error("Invalid OTP code. Use 12345 in local demo mode.");
+interface BackendAuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: AppRole;
+  phone: string | null;
+  location: string | null;
+  specialization: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  notifyEmail: boolean;
+  notifySms: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface BackendAuthPayload {
+  token: string;
+  user: BackendAuthUser;
+}
+
+async function postApi<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.message || "Request failed.");
   }
+
+  return payload?.data as T;
+}
+
+function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
+  mutateState((state) => {
+    const normalizedPhone = normalizePhone(auth.user.phone || "");
+    const storedUser: StoredAuthUser = {
+      id: auth.user.id,
+      email: auth.user.email,
+      password: "",
+      phone: normalizedPhone,
+      full_name: auth.user.fullName,
+      role: auth.user.role,
+    };
+
+    const existingUserIndex = state.authUsers.findIndex((candidate) => candidate.id === storedUser.id);
+    if (existingUserIndex >= 0) {
+      state.authUsers[existingUserIndex] = storedUser;
+    } else {
+      state.authUsers.push(storedUser);
+    }
+
+    const profile = buildInsertedRow("profiles", {
+      id: auth.user.id,
+      full_name: auth.user.fullName,
+      phone: normalizedPhone,
+      location: auth.user.location,
+      specialization: auth.user.specialization,
+      bio: auth.user.bio,
+      avatar_url: auth.user.avatarUrl,
+      notify_email: auth.user.notifyEmail,
+      notify_sms: auth.user.notifySms,
+      is_active: auth.user.isActive,
+      created_at: auth.user.createdAt,
+    });
+    const profileIndex = state.tables.profiles.findIndex((candidate) => candidate.id === auth.user.id);
+    if (profileIndex >= 0) {
+      state.tables.profiles[profileIndex] = profile;
+    } else {
+      state.tables.profiles.push(profile);
+    }
+
+    const roleIndex = state.tables.user_roles.findIndex((candidate) => candidate.user_id === auth.user.id);
+    if (roleIndex >= 0) {
+      state.tables.user_roles[roleIndex] = {
+        ...state.tables.user_roles[roleIndex],
+        role: auth.user.role,
+      };
+    } else {
+      state.tables.user_roles.push(
+        buildInsertedRow("user_roles", {
+          user_id: auth.user.id,
+          role: auth.user.role,
+        }),
+      );
+    }
+
+    state.sessionUserId = auth.user.id;
+  });
+
+  if (hasWindow()) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, auth.token);
+  }
+
+  emitAuthChange(event);
 }
 
 function getStoredUserById(state: AppState, id: string | null) {
@@ -799,24 +904,13 @@ export const db = {
     }: {
       phone: string;
       purpose: "login" | "signup";
-    }): Promise<{ error: Error | null; data: { devOtp: string } | null }> {
+    }): Promise<{ error: Error | null; data: null }> {
       const normalizedPhone = normalizePhone(phone);
 
       try {
         if (!normalizedPhone) throw new Error("Phone number is required.");
-
-        const state = readState();
-        const existing = state.authUsers.find((candidate) => candidate.phone === normalizedPhone);
-
-        if (purpose === "login" && !existing) {
-          throw new Error("No account found for this phone number.");
-        }
-
-        if (purpose === "signup" && existing) {
-          throw new Error("An account with this phone number already exists.");
-        }
-
-        return { data: { devOtp: "12345" }, error: null };
+        await postApi("/auth/otp/request", { phone: normalizedPhone, purpose });
+        return { data: null, error: null };
       } catch (error) {
         return { data: null, error: error as Error };
       }
@@ -837,55 +931,15 @@ export const db = {
       const normalizedEmail = email?.trim().toLowerCase() || "";
 
       try {
-        assertLocalOtp(otpcode);
-
-        const user = mutateState((state) => {
-          const existing = state.authUsers.find(
-            (candidate) => candidate.phone === normalizedPhone,
-          );
-          if (existing) {
-            throw new Error("An account with this phone number already exists.");
-          }
-
-          if (
-            normalizedEmail &&
-            state.authUsers.some((candidate) => candidate.email.toLowerCase() === normalizedEmail)
-          ) {
-            throw new Error("An account with this email already exists.");
-          }
-
-          const newUser: StoredAuthUser = {
-            id: createId("user"),
-            email: normalizedEmail || `${normalizedPhone.replace(/^\+/, "")}@phone.artisancrm.local`,
-            password: "",
-            phone: normalizedPhone,
-            full_name: options?.data?.full_name?.trim() || "New User",
-            role: options?.data?.role ?? "customer",
-          };
-
-          state.authUsers.push(newUser);
-          state.tables.profiles.push(
-            buildInsertedRow("profiles", {
-              id: newUser.id,
-              full_name: newUser.full_name,
-              phone: newUser.phone,
-              notify_email: true,
-              notify_sms: true,
-              is_active: true,
-            }),
-          );
-          state.tables.user_roles.push(
-            buildInsertedRow("user_roles", {
-              user_id: newUser.id,
-              role: newUser.role,
-            }),
-          );
-          state.sessionUserId = newUser.id;
-          return newUser;
+        const auth = await postApi<BackendAuthPayload>("/auth/signup", {
+          phone: normalizedPhone,
+          otpcode,
+          email: normalizedEmail || undefined,
+          fullName: options?.data?.full_name,
+          role: options?.data?.role ?? "customer",
         });
-
-        emitAuthChange("SIGNED_UP");
-        return { data: { user: createAuthUser(user) }, error: null };
+        syncBackendUser(auth, "SIGNED_UP");
+        return { data: { user: createAuthUser(readState().authUsers.find((user) => user.id === auth.user.id)!) }, error: null };
       } catch (error) {
         return { data: { user: null }, error: error as Error };
       }
@@ -901,25 +955,11 @@ export const db = {
       const normalizedPhone = normalizePhone(phone);
 
       try {
-        assertLocalOtp(otpcode);
-
-        mutateState((state) => {
-          const user = state.authUsers.find(
-            (candidate) => candidate.phone === normalizedPhone,
-          );
-          if (!user) {
-            throw new Error("Invalid phone number or OTP code.");
-          }
-
-          const profile = state.tables.profiles.find((candidate) => candidate.id === user.id);
-          if (profile && !profile.is_active) {
-            throw new Error("This account has been deactivated.");
-          }
-
-          state.sessionUserId = user.id;
+        const auth = await postApi<BackendAuthPayload>("/auth/login", {
+          phone: normalizedPhone,
+          otpcode,
         });
-
-        emitAuthChange("SIGNED_IN");
+        syncBackendUser(auth, "SIGNED_IN");
         return { error: null };
       } catch (error) {
         return { error: error as Error };
@@ -930,6 +970,9 @@ export const db = {
       mutateState((state) => {
         state.sessionUserId = null;
       });
+      if (hasWindow()) {
+        window.localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
       emitAuthChange("SIGNED_OUT");
       return { error: null };
     },

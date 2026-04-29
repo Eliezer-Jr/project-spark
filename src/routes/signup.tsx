@@ -35,7 +35,7 @@ function SignupPage() {
       toast.error(error.message);
     } else if (!otpSent) {
       setOtpSent(true);
-      toast.success("OTP sent. Use 12345 in local demo mode.");
+      toast.success("OTP sent to your phone.");
     } else {
       toast.success("Account created!");
       const redirectMap = {

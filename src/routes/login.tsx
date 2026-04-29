@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,17 @@ function LoginPage() {
   const [otpcode, setOtpcode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const redirectMap = {
+    artisan: "/artisan/dashboard",
+    customer: "/customer/dashboard",
+    admin: "/admin/dashboard",
+  } as const;
+
+  useEffect(() => {
+    if (role) {
+      navigate({ to: redirectMap[role] as any });
+    }
+  }, [navigate, role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,19 +42,13 @@ function LoginPage() {
       toast.error(error.message);
     } else if (!otpSent) {
       setOtpSent(true);
-      toast.success("OTP sent. Use 12345 in local demo mode.");
+      toast.success("OTP sent to your phone.");
     } else {
       toast.success("Welcome back!");
     }
   };
 
   if (role) {
-    const redirectMap = {
-      artisan: "/artisan/dashboard",
-      customer: "/customer/dashboard",
-      admin: "/admin/dashboard",
-    } as const;
-    navigate({ to: redirectMap[role] as any });
     return null;
   }
 

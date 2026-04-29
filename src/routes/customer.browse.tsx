@@ -30,7 +30,8 @@ import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/types/database";
 import "leaflet/dist/leaflet.css";
 
-const SEARCH_RADIUS_KM = 5; // 5 km radius for nearby artisans
+const DEFAULT_SEARCH_RADIUS_KM = 5;
+const SEARCH_RADIUS_OPTIONS_KM = [1, 5, 10, 25, 50];
 const GEOCODE_CACHE_KEY = "artisancrm.geocode-cache.v1";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -182,6 +183,7 @@ function BrowseContent() {
   >({});
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_SEARCH_RADIUS_KM);
   const [userCoordinates, setUserCoordinates] = useState<Coordinates | null>(null);
   const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
   const [geocodedLocations, setGeocodedLocations] = useState<CoordinateLookup>(() =>
@@ -251,9 +253,9 @@ function BrowseContent() {
     const savedCoordinates = resolveLocationCoordinates(profile?.location, geocodedLocations);
     if (savedCoordinates) {
       setUserCoordinates(savedCoordinates);
-      setLocationStatus(`Showing artisans within ${SEARCH_RADIUS_KM} km of ${profile?.location}.`);
+      setLocationStatus(`Showing artisans within ${radiusKm} km of ${profile?.location}.`);
     }
-  }, [geocodedLocations, profile?.location]);
+  }, [geocodedLocations, profile?.location, radiusKm]);
 
   useEffect(() => {
     const locations = [profile?.location, ...artisans.map((artisan) => artisan.location)]
@@ -312,9 +314,7 @@ function BrowseContent() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
-        setLocationStatus(
-          `Showing artisans within ${SEARCH_RADIUS_KM} km of your current location.`,
-        );
+        setLocationStatus(`Showing artisans within ${radiusKm} km of your current location.`);
       },
       () =>
         setLocationStatus(
@@ -342,8 +342,7 @@ function BrowseContent() {
       a.location?.toLowerCase().includes(search.toLowerCase());
     const matchCat =
       catFilter === "all" || a.specialization?.toLowerCase().includes(catFilter.toLowerCase());
-    const matchRadius =
-      !userCoordinates || (a.distanceKm != null && a.distanceKm <= SEARCH_RADIUS_KM);
+    const matchRadius = !userCoordinates || (a.distanceKm != null && a.distanceKm <= radiusKm);
     return matchSearch && matchCat && matchRadius;
   });
 
@@ -372,7 +371,7 @@ function BrowseContent() {
               <ArtisanMap
                 center={userCoordinates}
                 artisans={displayedArtisans}
-                radiusKm={SEARCH_RADIUS_KM}
+                radiusKm={radiusKm}
                 statsByArtisan={statsByArtisan}
                 onArtisanSelect={setSelectedArtisanId}
                 className="h-[420px] lg:h-[560px]"
@@ -380,7 +379,7 @@ function BrowseContent() {
               <div className="pointer-events-none absolute left-4 top-4 flex flex-wrap gap-2">
                 <Badge className="gap-1 bg-background/95 text-foreground shadow-sm backdrop-blur">
                   <Navigation className="h-3.5 w-3.5" />
-                  {SEARCH_RADIUS_KM} km radius
+                  {radiusKm} km radius
                 </Badge>
                 <Badge variant="secondary" className="bg-background/95 shadow-sm backdrop-blur">
                   {mappedCount} mapped
@@ -416,6 +415,21 @@ function BrowseContent() {
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.name}>
                         {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={String(radiusKm)}
+                  onValueChange={(value) => setRadiusKm(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Search radius" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEARCH_RADIUS_OPTIONS_KM.map((option) => (
+                      <SelectItem key={option} value={String(option)}>
+                        Within {option} km
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -553,7 +567,7 @@ function BrowseContent() {
           </div>
           <Badge variant="outline" className="w-fit gap-1">
             <MapPin className="h-3.5 w-3.5" />
-            Within {SEARCH_RADIUS_KM} km
+            Within {radiusKm} km
           </Badge>
         </div>
 
@@ -689,6 +703,7 @@ function ArtisanMap({
     let disposed = false;
     let map: import("leaflet").Map | null = null;
     let markerLayer: import("leaflet").LayerGroup | null = null;
+    let radiusBounds: import("leaflet").LatLngBounds | null = null;
 
     const mappedArtisans = artisans.filter((artisan) => artisan.coordinates);
     const fallbackCenter = center ?? mappedArtisans[0]?.coordinates ?? LOCATION_COORDINATES.accra;
@@ -717,13 +732,14 @@ function ArtisanMap({
       markerLayer = L.layerGroup().addTo(map);
 
       if (center) {
-        L.circle([center.lat, center.lng], {
+        const radiusCircle = L.circle([center.lat, center.lng], {
           radius: radiusKm * 1000,
           color: "#16a34a",
           fillColor: "#22c55e",
           fillOpacity: 0.08,
           weight: 2,
         }).addTo(markerLayer);
+        radiusBounds = radiusCircle.getBounds();
 
         L.marker([center.lat, center.lng], {
           icon: L.divIcon({
@@ -805,15 +821,21 @@ function ArtisanMap({
           .addTo(markerLayer as import("leaflet").LayerGroup);
       });
 
-      const bounds = L.latLngBounds([]);
-      if (center) bounds.extend([center.lat, center.lng]);
-      mappedArtisans.forEach((artisan) => {
-        const coordinates = artisan.coordinates as Coordinates;
-        bounds.extend([coordinates.lat, coordinates.lng]);
-      });
+      if (radiusBounds?.isValid()) {
+        map.fitBounds(radiusBounds.pad(0.08), {
+          animate: false,
+          padding: [24, 24],
+        });
+      } else {
+        const bounds = L.latLngBounds([]);
+        mappedArtisans.forEach((artisan) => {
+          const coordinates = artisan.coordinates as Coordinates;
+          bounds.extend([coordinates.lat, coordinates.lng]);
+        });
 
-      if (bounds.isValid()) {
-        map.fitBounds(bounds.pad(0.2), { maxZoom: 12 });
+        if (bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.2), { animate: false, maxZoom: 12 });
+        }
       }
     });
 

@@ -18,7 +18,15 @@ function sanitizeUser(user) {
 }
 
 function normalizePhone(phone) {
-  return String(phone || "").replace(/\s+/g, "");
+  const compact = String(phone || "").replace(/[^\d+]/g, "");
+  if (!compact) return "";
+
+  if (compact.startsWith("+233")) return compact;
+  if (compact.startsWith("233")) return `+${compact}`;
+  if (compact.startsWith("0")) return `+233${compact.slice(1)}`;
+  if (/^\d{9}$/.test(compact)) return `+233${compact}`;
+
+  return compact;
 }
 
 function createPlaceholderEmail(phone) {

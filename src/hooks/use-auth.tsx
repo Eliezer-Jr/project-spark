@@ -24,7 +24,7 @@ interface AuthContextType {
   requestOtp: (
     phone: string,
     purpose: "login" | "signup",
-  ) => Promise<{ error: Error | null; devOtp?: string }>;
+  ) => Promise<{ error: Error | null }>;
   signUp: (
     phone: string,
     otpcode: string,
@@ -87,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requestOtp = async (phone: string, purpose: "login" | "signup") => {
-    const { data, error } = await db.auth.requestOtp({ phone, purpose });
-    return { error, devOtp: data?.devOtp };
+    const { error } = await db.auth.requestOtp({ phone, purpose });
+    return { error };
   };
 
   const signUp = async (

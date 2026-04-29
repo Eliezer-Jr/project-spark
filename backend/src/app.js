@@ -9,7 +9,19 @@ import { notFoundMiddleware } from "./middleware/not-found.middleware.js";
 
 const app = express();
 
-app.use(cors({ origin: env.frontendUrl, credentials: true }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || env.frontendUrls.includes(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestIdMiddleware);

@@ -12,6 +12,10 @@ export const env = {
   port: Number(process.env.PORT || 4000),
   nodeEnv: process.env.NODE_ENV || "development",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+  frontendUrls: (process.env.FRONTEND_URL || "http://localhost:5173")
+    .split(",")
+    .map((url) => url.trim())
+    .filter(Boolean),
   appName: process.env.APP_NAME || "Project Spark Backend",
   appSecret: process.env.APP_SECRET || "change-me-in-production",
   dbHost: process.env.DB_HOST || "127.0.0.1",
