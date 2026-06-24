@@ -6,6 +6,7 @@ import dashboardRoutes from "./dashboard.routes.js";
 import feedbackRoutes from "./feedback.routes.js";
 import healthRoutes from "./health.routes.js";
 import notificationRoutes from "./notification.routes.js";
+import paymentRoutes from "./payment.routes.js";
 import serviceCategoryRoutes from "./service-category.routes.js";
 import serviceRecordRoutes from "./service-record.routes.js";
 import systemRoutes from "./system.routes.js";
@@ -25,5 +26,6 @@ router.use("/appointments", appointmentRoutes);
 router.use("/feedback", feedbackRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/payments", paymentRoutes);
 
 export default router;

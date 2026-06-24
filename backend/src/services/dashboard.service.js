@@ -1,6 +1,7 @@
 import { appointmentModel } from "../models/appointment.model.js";
 import { customerModel } from "../models/customer.model.js";
 import { feedbackModel } from "../models/feedback.model.js";
+import { paymentModel } from "../models/payment.model.js";
 import { serviceRecordModel } from "../models/service-record.model.js";
 import { userModel } from "../models/user.model.js";
 import { average } from "../utils/dashboard.js";
@@ -12,11 +13,13 @@ function sum(values = []) {
 
 export const dashboardService = {
   async getAdminDashboard() {
-    const [users, appointments, serviceRecords] = await Promise.all([
+    const [users, appointments, serviceRecords, payments] = await Promise.all([
       userModel.findAll(),
       appointmentModel.findAll(),
       serviceRecordModel.findAll(),
+      paymentModel.findAll(),
     ]);
+    const successfulPayments = payments.filter((item) => item.status === "successful");
 
     return {
       users: users.length,
@@ -29,16 +32,21 @@ export const dashboardService = {
       pendingAppointments: appointments.filter((item) => item.status === "pending").length,
       confirmedAppointments: appointments.filter((item) => item.status === "confirmed").length,
       revenue: sum(serviceRecords.map((item) => item.cost)),
+      paidRevenue: sum(successfulPayments.map((item) => item.amount)),
+      payments: payments.length,
+      pendingPayments: payments.filter((item) => item.status === "pending").length,
     };
   },
 
   async getAdminAnalytics() {
-    const [users, appointments, feedback, serviceRecords] = await Promise.all([
+    const [users, appointments, feedback, serviceRecords, payments] = await Promise.all([
       userModel.findAll(),
       appointmentModel.findAll(),
       feedbackModel.findAll(),
       serviceRecordModel.findAll(),
+      paymentModel.findAll(),
     ]);
+    const successfulPayments = payments.filter((item) => item.status === "successful");
 
     const roleBreakdown = {
       admin: users.filter((item) => item.role === "admin").length,
@@ -57,6 +65,9 @@ export const dashboardService = {
       averageRating: average(feedback.map((item) => item.rating)),
       totalServices: serviceRecords.length,
       totalRevenue: sum(serviceRecords.map((item) => item.cost)),
+      totalPayments: payments.length,
+      pendingPayments: payments.filter((item) => item.status === "pending").length,
+      paidRevenue: sum(successfulPayments.map((item) => item.amount)),
     };
   },
 
@@ -73,17 +84,20 @@ export const dashboardService = {
   },
 
   async getArtisanDashboard(artisanId) {
-    const [customers, appointments, serviceRecords, feedback] = await Promise.all([
+    const [customers, appointments, serviceRecords, feedback, payments] = await Promise.all([
       customerModel.findAll(),
       appointmentModel.findAll(),
       serviceRecordModel.findAll(),
       feedbackModel.findAll(),
+      paymentModel.findAll(),
     ]);
 
     const artisanCustomers = customers.filter((item) => item.artisanId === artisanId);
     const artisanAppointments = appointments.filter((item) => item.artisanId === artisanId);
     const artisanServices = serviceRecords.filter((item) => item.artisanId === artisanId);
     const artisanFeedback = feedback.filter((item) => item.artisanId === artisanId);
+    const artisanPayments = payments.filter((item) => item.artisanId === artisanId);
+    const successfulPayments = artisanPayments.filter((item) => item.status === "successful");
 
     return {
       customers: artisanCustomers.length,
@@ -93,6 +107,9 @@ export const dashboardService = {
       confirmedAppointments: artisanAppointments.filter((item) => item.status === "confirmed").length,
       averageRating: average(artisanFeedback.map((item) => item.rating)),
       revenue: sum(artisanServices.map((item) => item.cost)),
+      paidRevenue: sum(successfulPayments.map((item) => item.amount)),
+      payments: artisanPayments.length,
+      pendingPayments: artisanPayments.filter((item) => item.status === "pending").length,
       upcomingAppointments: sortBy(artisanAppointments, "scheduledDate", "asc").slice(0, 5),
     };
   },

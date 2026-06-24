@@ -129,6 +129,7 @@ function normalizeState(state: Partial<AppState>): AppState {
       work_requests: Array.isArray(state.tables?.work_requests)
         ? state.tables.work_requests
         : seed.tables.work_requests,
+      payments: Array.isArray(state.tables?.payments) ? state.tables.payments : seed.tables.payments,
     },
   };
 
@@ -156,6 +157,7 @@ function normalizeState(state: Partial<AppState>): AppState {
       feedback: mergeMissingById(normalized.tables.feedback, seed.tables.feedback),
       quotes: mergeMissingById(normalized.tables.quotes, seed.tables.quotes),
       work_requests: mergeMissingById(normalized.tables.work_requests, seed.tables.work_requests),
+      payments: mergeMissingById(normalized.tables.payments, seed.tables.payments),
     },
   };
 }
@@ -592,6 +594,24 @@ function createSeedState(): AppState {
           updated_at: createdAt,
         },
       ],
+      payments: [
+        {
+          id: "payment-seed-1",
+          quote_id: quoteId,
+          artisan_id: artisanId,
+          customer_user_id: customerId,
+          amount: 200,
+          currency: "GHS",
+          phone: "+233201234567",
+          provider: "redde",
+          provider_reference: "seed-payment-1",
+          checkout_url: null,
+          status: "successful",
+          note: "Seed deposit payment",
+          created_at: createdAt,
+          updated_at: createdAt,
+        },
+      ],
     },
   };
 }
@@ -704,6 +724,23 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         preferred_date: (input.preferred_date as string | null) ?? null,
         status: (input.status as TableRow<"work_requests">["status"] | undefined) ?? "new",
         response_note: (input.response_note as string | null) ?? null,
+        created_at: (input.created_at as string | undefined) ?? timestamp,
+        updated_at: timestamp,
+      } as TableRow<T>;
+    case "payments":
+      return {
+        id: (input.id as string) ?? createId("payment"),
+        quote_id: (input.quote_id as string | null) ?? null,
+        artisan_id: input.artisan_id as string,
+        customer_user_id: input.customer_user_id as string,
+        amount: Number(input.amount ?? 0),
+        currency: (input.currency as string | undefined) ?? "GHS",
+        phone: input.phone as string,
+        provider: (input.provider as TableRow<"payments">["provider"] | undefined) ?? "redde",
+        provider_reference: (input.provider_reference as string | null) ?? null,
+        checkout_url: (input.checkout_url as string | null) ?? null,
+        status: (input.status as TableRow<"payments">["status"] | undefined) ?? "pending",
+        note: (input.note as string | null) ?? null,
         created_at: (input.created_at as string | undefined) ?? timestamp,
         updated_at: timestamp,
       } as TableRow<T>;

@@ -29,6 +29,12 @@ export const env = {
     username: process.env.FROG_USERNAME || "",
     senderId: process.env.FROG_SENDER_ID || "",
   },
+  redde: {
+    baseUrl: process.env.REDDE_BASE_URL || "https://api.reddeonline.com/v1",
+    apiKey: process.env.REDDE_API_KEY || "",
+    appId: process.env.REDDE_APP_ID || "",
+    callbackUrl: process.env.REDDE_CALLBACK_URL || "",
+  },
   email: {
     host: process.env.SMTP_HOST || "",
     port: Number(process.env.SMTP_PORT || 587),

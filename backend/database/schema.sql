@@ -89,6 +89,25 @@ CREATE TABLE IF NOT EXISTS feedback (
   CONSTRAINT fk_feedback_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS payments (
+  id CHAR(36) PRIMARY KEY,
+  quote_id VARCHAR(80),
+  artisan_id CHAR(36) NOT NULL,
+  customer_user_id CHAR(36) NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'GHS',
+  phone VARCHAR(30) NOT NULL,
+  provider VARCHAR(40) NOT NULL DEFAULT 'redde',
+  provider_reference VARCHAR(120),
+  checkout_url VARCHAR(500),
+  status ENUM('pending', 'successful', 'failed') NOT NULL DEFAULT 'pending',
+  note TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_payments_artisan FOREIGN KEY (artisan_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_payments_customer_user FOREIGN KEY (customer_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX idx_customers_artisan_id ON customers (artisan_id);
 CREATE INDEX idx_service_records_artisan_id ON service_records (artisan_id);
 CREATE INDEX idx_service_records_customer_id ON service_records (customer_id);
@@ -96,3 +115,6 @@ CREATE INDEX idx_appointments_artisan_id ON appointments (artisan_id);
 CREATE INDEX idx_appointments_customer_user_id ON appointments (customer_user_id);
 CREATE INDEX idx_feedback_artisan_id ON feedback (artisan_id);
 CREATE INDEX idx_feedback_customer_user_id ON feedback (customer_user_id);
+CREATE INDEX idx_payments_artisan_id ON payments (artisan_id);
+CREATE INDEX idx_payments_customer_user_id ON payments (customer_user_id);
+CREATE INDEX idx_payments_provider_reference ON payments (provider_reference);

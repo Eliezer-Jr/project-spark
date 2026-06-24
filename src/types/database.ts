@@ -9,6 +9,7 @@ export type QuoteStatus =
   | "converted"
   | "archived";
 export type WorkRequestStatus = "new" | "reviewing" | "scheduled" | "closed";
+export type PaymentStatus = "pending" | "successful" | "failed";
 
 export interface Database {
   public: {
@@ -162,12 +163,42 @@ export interface Database {
         >;
         Update: Partial<Database["public"]["Tables"]["work_requests"]["Insert"]>;
       };
+      payments: {
+        Row: {
+          id: string;
+          quote_id: string | null;
+          artisan_id: string;
+          customer_user_id: string;
+          amount: number;
+          currency: string;
+          phone: string;
+          provider: "redde";
+          provider_reference: string | null;
+          checkout_url: string | null;
+          status: PaymentStatus;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["payments"]["Row"],
+          "id" | "provider" | "created_at" | "updated_at"
+        > &
+          Partial<
+            Pick<
+              Database["public"]["Tables"]["payments"]["Row"],
+              "id" | "provider" | "created_at" | "updated_at"
+            >
+          >;
+        Update: Partial<Database["public"]["Tables"]["payments"]["Insert"]>;
+      };
     };
     Enums: {
       app_role: AppRole;
       appointment_status: AppointmentStatus;
       quote_status: QuoteStatus;
       work_request_status: WorkRequestStatus;
+      payment_status: PaymentStatus;
     };
     Functions: {
       has_role: {

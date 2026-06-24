@@ -5,12 +5,14 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatCurrency, formatDateLabel, formatStatusLabel, getStatusClasses } from "@/lib/crm-helpers";
+import { startQuotePayment } from "@/lib/payments";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, CheckCircle2, PencilLine } from "lucide-react";
+import { FileText, CheckCircle2, PencilLine, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/customer/quotes")({
@@ -22,17 +24,25 @@ export const Route = createFileRoute("/customer/quotes")({
 });
 
 function CustomerQuotesContent() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [quotes, setQuotes] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any | null>(null);
   const [changeRequest, setChangeRequest] = useState("");
+  const [paymentPhone, setPaymentPhone] = useState(profile?.phone || "");
+  const [isPaying, setIsPaying] = useState(false);
 
   const load = async () => {
     if (!user) return;
 
-    const { data } = await db.from("quotes").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false });
-    setQuotes((data || []) as any[]);
+    const [quoteRes, paymentRes] = await Promise.all([
+      db.from("quotes").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false }),
+      db.from("payments").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false }),
+    ]);
+    setQuotes((quoteRes.data || []) as any[]);
+    setPayments((paymentRes.data || []) as any[]);
   };
 
   useEffect(() => {
@@ -64,9 +74,44 @@ function CustomerQuotesContent() {
     setChangeRequest("");
   };
 
+  const startPayment = async () => {
+    if (!user || !selectedQuote || !paymentPhone.trim()) return;
+
+    const amount = Number(selectedQuote.deposit_amount || selectedQuote.amount || 0);
+    if (amount <= 0) {
+      toast.error("Quote amount is required before payment.");
+      return;
+    }
+
+    setIsPaying(true);
+    try {
+      const result = await startQuotePayment({
+        quoteId: selectedQuote.id,
+        artisanId: selectedQuote.artisan_id,
+        customerUserId: user.id,
+        amount,
+        phone: paymentPhone.trim(),
+        note: selectedQuote.deposit_amount ? "Quote deposit" : "Quote payment",
+      });
+
+      toast.success("Payment request created");
+      setPaymentDialogOpen(false);
+      setSelectedQuote(null);
+      await load();
+
+      if (result.checkoutUrl) {
+        window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start payment.");
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   return (
     <>
-      <PageHeader title="My Quotes" description="Approve estimates or request changes before work begins" />
+      <PageHeader title="My Quotes" description="Approve estimates, request changes, or pay approved quotes" />
 
       {quotes.length === 0 ? (
         <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
@@ -75,67 +120,124 @@ function CustomerQuotesContent() {
         </div>
       ) : (
         <div className="space-y-4">
-          {quotes.map((quote) => (
-            <div key={quote.id} className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-card-foreground">{quote.title}</h3>
-                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(quote.status)}`}>
-                      {formatStatusLabel(quote.status)}
-                    </span>
+          {quotes.map((quote) => {
+            const quotePayments = payments.filter((payment) => payment.quote_id === quote.id);
+
+            return (
+              <div key={quote.id} className="rounded-xl border bg-card p-5 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-card-foreground">{quote.title}</h3>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(quote.status)}`}>
+                        {formatStatusLabel(quote.status)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Total: {formatCurrency(quote.amount)}
+                      {quote.deposit_amount ? ` - Deposit: ${formatCurrency(quote.deposit_amount)}` : ""}
+                      {quote.valid_until ? ` - Valid until ${formatDateLabel(quote.valid_until)}` : ""}
+                    </p>
+                    {quotePayments.length > 0 && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Payment:{" "}
+                        {quotePayments
+                          .map((payment) => `${formatCurrency(payment.amount)} ${formatStatusLabel(payment.status)}`)
+                          .join(", ")}
+                      </p>
+                    )}
+                    {quote.description && <p className="mt-3 text-sm text-card-foreground">{quote.description}</p>}
+                    {quote.requested_changes && (
+                      <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-warning">
+                        Requested changes: {quote.requested_changes}
+                      </div>
+                    )}
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Total: {formatCurrency(quote.amount)}
-                    {quote.deposit_amount ? ` · Deposit: ${formatCurrency(quote.deposit_amount)}` : ""}
-                    {quote.valid_until ? ` · Valid until ${formatDateLabel(quote.valid_until)}` : ""}
-                  </p>
-                  {quote.description && <p className="mt-3 text-sm text-card-foreground">{quote.description}</p>}
-                  {quote.requested_changes && (
-                    <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-warning">
-                      Requested changes: {quote.requested_changes}
+
+                  {(quote.status === "awaiting_response" || quote.status === "changes_requested") && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => updateQuote(quote.id, { status: "approved", requested_changes: null }, "Quote approved")}>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Approve
+                      </Button>
+                      <Dialog
+                        open={dialogOpen && selectedQuote?.id === quote.id}
+                        onOpenChange={(open) => {
+                          setDialogOpen(open);
+                          if (!open) {
+                            setSelectedQuote(null);
+                            setChangeRequest("");
+                          }
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={() => setSelectedQuote(quote)}>
+                            <PencilLine className="mr-2 h-4 w-4" />
+                            Request Changes
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader><DialogTitle>Request Quote Changes</DialogTitle></DialogHeader>
+                          <div className="space-y-3 mt-2">
+                            <div>
+                              <Label>What should change?</Label>
+                              <Textarea value={changeRequest} onChange={(event) => setChangeRequest(event.target.value)} className="mt-1 min-h-24" placeholder="Describe pricing, scope, or timeline changes you want." />
+                            </div>
+                            <Button onClick={submitChangeRequest} className="w-full">Send Request</Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   )}
-                </div>
 
-                {(quote.status === "awaiting_response" || quote.status === "changes_requested") && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => updateQuote(quote.id, { status: "approved", requested_changes: null }, "Quote approved")}>
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Approve
-                    </Button>
+                  {quote.status === "approved" && (
                     <Dialog
-                      open={dialogOpen && selectedQuote?.id === quote.id}
+                      open={paymentDialogOpen && selectedQuote?.id === quote.id}
                       onOpenChange={(open) => {
-                        setDialogOpen(open);
-                        if (!open) {
+                        setPaymentDialogOpen(open);
+                        if (open) {
+                          setSelectedQuote(quote);
+                          setPaymentPhone(profile?.phone || "");
+                        } else {
                           setSelectedQuote(null);
-                          setChangeRequest("");
                         }
                       }}
                     >
                       <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" onClick={() => setSelectedQuote(quote)}>
-                          <PencilLine className="mr-2 h-4 w-4" />
-                          Request Changes
+                        <Button size="sm" onClick={() => setSelectedQuote(quote)}>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Pay {quote.deposit_amount ? "Deposit" : "Now"}
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
-                        <DialogHeader><DialogTitle>Request Quote Changes</DialogTitle></DialogHeader>
-                        <div className="space-y-3 mt-2">
-                          <div>
-                            <Label>What should change?</Label>
-                            <Textarea value={changeRequest} onChange={(event) => setChangeRequest(event.target.value)} className="mt-1 min-h-24" placeholder="Describe pricing, scope, or timeline changes you want." />
+                        <DialogHeader><DialogTitle>Pay Quote</DialogTitle></DialogHeader>
+                        <div className="mt-2 space-y-3">
+                          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                            <p className="font-medium text-card-foreground">{quote.title}</p>
+                            <p className="mt-1 text-muted-foreground">
+                              Amount due: {formatCurrency(quote.deposit_amount || quote.amount)}
+                            </p>
                           </div>
-                          <Button onClick={submitChangeRequest} className="w-full">Send Request</Button>
+                          <div>
+                            <Label>Mobile money number</Label>
+                            <Input
+                              value={paymentPhone}
+                              onChange={(event) => setPaymentPhone(event.target.value)}
+                              className="mt-1"
+                              placeholder="+233..."
+                            />
+                          </div>
+                          <Button onClick={startPayment} disabled={isPaying || !paymentPhone.trim()} className="w-full">
+                            {isPaying ? "Starting Payment..." : "Pay with Redde"}
+                          </Button>
                         </div>
                       </DialogContent>
                     </Dialog>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

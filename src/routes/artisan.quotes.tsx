@@ -186,8 +186,8 @@ function ArtisanQuotesContent() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {customer?.name || "Customer"} · {formatCurrency(quote.amount)}
-                      {quote.valid_until ? ` · Valid until ${formatDateLabel(quote.valid_until)}` : ""}
+                      {customer?.name || "Customer"} - {formatCurrency(quote.amount)}
+                      {quote.valid_until ? ` - Valid until ${formatDateLabel(quote.valid_until)}` : ""}
                     </p>
                     {quote.description && <p className="mt-3 text-sm text-card-foreground">{quote.description}</p>}
                     {quote.deposit_amount ? <p className="mt-2 text-sm text-muted-foreground">Deposit requested: {formatCurrency(quote.deposit_amount)}</p> : null}

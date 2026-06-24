@@ -4,8 +4,9 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
 import { db } from "@/lib/app-db";
+import { formatCurrency } from "@/lib/crm-helpers";
 import { useEffect, useState } from "react";
-import { Users, Calendar, Wrench, Star, BarChart3 } from "lucide-react";
+import { Users, Calendar, Wrench, CreditCard, Wallet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 
 export const Route = createFileRoute("/admin/dashboard")({
@@ -17,22 +18,27 @@ export const Route = createFileRoute("/admin/dashboard")({
 });
 
 function AdminDashContent() {
-  const [stats, setStats] = useState({ users: 0, artisans: 0, customers: 0, appointments: 0, services: 0 });
+  const [stats, setStats] = useState({ users: 0, artisans: 0, customers: 0, appointments: 0, services: 0, paid: 0, paymentCount: 0 });
 
   useEffect(() => {
     const load = async () => {
-      const [rolesRes, apptRes, svcRes] = await Promise.all([
+      const [rolesRes, apptRes, svcRes, paymentRes] = await Promise.all([
         db.from("user_roles").select("role"),
         db.from("appointments").select("id", { count: "exact" }),
         db.from("service_records").select("id", { count: "exact" }),
+        db.from("payments").select("*"),
       ]);
       const roles = (rolesRes.data || []) as any[];
+      const payments = (paymentRes.data || []) as any[];
+      const successfulPayments = payments.filter((payment) => payment.status === "successful");
       setStats({
         users: roles.length,
         artisans: roles.filter((r: any) => r.role === "artisan").length,
         customers: roles.filter((r: any) => r.role === "customer").length,
         appointments: apptRes.count || 0,
         services: svcRes.count || 0,
+        paid: successfulPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+        paymentCount: payments.length,
       });
     };
     load();
@@ -43,16 +49,19 @@ function AdminDashContent() {
     { name: "Customers", value: stats.customers },
     { name: "Appointments", value: stats.appointments },
     { name: "Services", value: stats.services },
+    { name: "Payments", value: stats.paymentCount },
   ];
 
   return (
     <>
       <PageHeader title="Admin Dashboard" description="Platform overview" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <StatCard title="Total Users" value={stats.users} icon={Users} />
         <StatCard title="Artisans" value={stats.artisans} icon={Wrench} />
         <StatCard title="Customers" value={stats.customers} icon={Users} />
         <StatCard title="Appointments" value={stats.appointments} icon={Calendar} />
+        <StatCard title="Payments" value={stats.paymentCount} icon={CreditCard} />
+        <StatCard title="Paid Revenue" value={formatCurrency(stats.paid)} icon={Wallet} />
       </div>
       <div className="mt-8 rounded-xl border bg-card p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-card-foreground mb-4">Platform Overview</h3>
