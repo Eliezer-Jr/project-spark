@@ -5,12 +5,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatCurrency, formatDateLabel, formatStatusLabel, getStatusClasses } from "@/lib/crm-helpers";
-import { startQuotePayment } from "@/lib/payments";
+import { startQuotePayment, type QuotePaymentResult } from "@/lib/payments";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, CheckCircle2, PencilLine, CreditCard } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +33,8 @@ function CustomerQuotesContent() {
   const [selectedQuote, setSelectedQuote] = useState<any | null>(null);
   const [changeRequest, setChangeRequest] = useState("");
   const [paymentPhone, setPaymentPhone] = useState(profile?.phone || "");
+  const [paymentOption, setPaymentOption] = useState("MTN");
+  const [paymentResult, setPaymentResult] = useState<QuotePaymentResult | null>(null);
   const [isPaying, setIsPaying] = useState(false);
 
   const load = async () => {
@@ -91,12 +94,12 @@ function CustomerQuotesContent() {
         customerUserId: user.id,
         amount,
         phone: paymentPhone.trim(),
+        paymentOption,
         note: selectedQuote.deposit_amount ? "Quote deposit" : "Quote payment",
       });
 
-      toast.success("Payment request created");
-      setPaymentDialogOpen(false);
-      setSelectedQuote(null);
+      setPaymentResult(result);
+      toast.success(result.checkoutUrl ? "Checkout opened" : "Payment request sent to phone");
       await load();
 
       if (result.checkoutUrl) {
@@ -198,8 +201,11 @@ function CustomerQuotesContent() {
                         if (open) {
                           setSelectedQuote(quote);
                           setPaymentPhone(profile?.phone || "");
+                          setPaymentOption("MTN");
+                          setPaymentResult(null);
                         } else {
                           setSelectedQuote(null);
+                          setPaymentResult(null);
                         }
                       }}
                     >
@@ -211,7 +217,37 @@ function CustomerQuotesContent() {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader><DialogTitle>Pay Quote</DialogTitle></DialogHeader>
-                        <div className="mt-2 space-y-3">
+                        {paymentResult ? (
+                          <div className="mt-2 space-y-4">
+                            <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                              <div className="flex items-center gap-2 font-medium text-card-foreground">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                                Payment request created
+                              </div>
+                              <p className="mt-2 text-muted-foreground">
+                                {paymentResult.checkoutUrl
+                                  ? "A checkout window was opened. Complete the payment there."
+                                  : `Approve the mobile money prompt sent to ${paymentPhone}.`}
+                              </p>
+                              {paymentResult.providerReference ? (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Reference: {paymentResult.providerReference}
+                                </p>
+                              ) : null}
+                            </div>
+                            {paymentResult.checkoutUrl ? (
+                              <Button
+                                variant="outline"
+                                onClick={() => window.open(paymentResult.checkoutUrl!, "_blank", "noopener,noreferrer")}
+                                className="w-full"
+                              >
+                                Reopen Checkout
+                              </Button>
+                            ) : null}
+                            <Button onClick={() => setPaymentDialogOpen(false)} className="w-full">Done</Button>
+                          </div>
+                        ) : (
+                          <div className="mt-2 space-y-3">
                           <div className="rounded-lg border bg-muted/30 p-3 text-sm">
                             <p className="font-medium text-card-foreground">{quote.title}</p>
                             <p className="mt-1 text-muted-foreground">
@@ -225,12 +261,26 @@ function CustomerQuotesContent() {
                               onChange={(event) => setPaymentPhone(event.target.value)}
                               className="mt-1"
                               placeholder="+233..."
-                            />
-                          </div>
+                          />
+                        </div>
+                        <div>
+                          <Label>Mobile money network</Label>
+                          <Select value={paymentOption} onValueChange={setPaymentOption}>
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MTN">MTN</SelectItem>
+                              <SelectItem value="VODAFONE">Vodafone</SelectItem>
+                              <SelectItem value="AIRTELTIGO">AirtelTigo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                           <Button onClick={startPayment} disabled={isPaying || !paymentPhone.trim()} className="w-full">
                             {isPaying ? "Starting Payment..." : "Pay with Redde"}
                           </Button>
                         </div>
+                        )}
                       </DialogContent>
                     </Dialog>
                   )}

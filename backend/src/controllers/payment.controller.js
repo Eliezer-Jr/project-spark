@@ -12,6 +12,7 @@ export async function startQuotePayment(req, res) {
     customerUserId,
     amount: req.body.amount,
     phone: req.body.phone,
+    paymentOption: req.body.paymentOption,
     note: req.body.note,
   });
 

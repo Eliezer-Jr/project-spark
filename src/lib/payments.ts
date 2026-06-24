@@ -9,6 +9,7 @@ export interface StartQuotePaymentInput {
   customerUserId: string;
   amount: number;
   phone: string;
+  paymentOption?: string;
   note?: string | null;
 }
 
@@ -39,13 +40,19 @@ export async function startQuotePayment(input: StartQuotePaymentInput): Promise<
         artisanId: input.artisanId,
         amount: input.amount,
         phone: input.phone,
+        paymentOption: input.paymentOption,
         note: input.note,
       }),
     });
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.success === false) {
-      throw new Error(payload?.message || "Unable to start Redde payment.");
+      const detailMessage =
+        payload?.details?.reddeMessage ||
+        payload?.details?.message ||
+        payload?.message ||
+        "Unable to start Redde payment.";
+      throw new Error(detailMessage);
     }
 
     const data = payload?.data;

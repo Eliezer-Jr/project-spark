@@ -14,6 +14,31 @@ function normalizePhone(phone) {
   return compact;
 }
 
+function toLocalWalletNumber(phone) {
+  const normalized = normalizePhone(phone);
+  if (normalized.startsWith("+233")) return `0${normalized.slice(4)}`;
+  if (normalized.startsWith("233")) return `0${normalized.slice(3)}`;
+  return normalized;
+}
+
+function assertWalletMatchesNetwork(walletNumber, paymentOption) {
+  const network = String(paymentOption || "").toUpperCase();
+  const prefixes = {
+    MTN: ["024", "025", "053", "054", "055", "059"],
+    VODAFONE: ["020", "050"],
+    AIRTELTIGO: ["026", "027", "056", "057"],
+  };
+
+  if (!/^0\d{9}$/.test(walletNumber)) {
+    throw new AppError("Enter a valid Ghana mobile money number, for example 0241234567.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
+  }
+
+  const allowedPrefixes = prefixes[network];
+  if (allowedPrefixes && !allowedPrefixes.some((prefix) => walletNumber.startsWith(prefix))) {
+    throw new AppError(`The wallet number does not match the selected ${network} network.`, HTTP_STATUS.UNPROCESSABLE_ENTITY);
+  }
+}
+
 function assertReddeConfigured() {
   if (!env.redde.apiKey || !env.redde.appId) {
     throw new AppError("Redde payment credentials are not configured.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
@@ -21,14 +46,39 @@ function assertReddeConfigured() {
 }
 
 function pickCheckoutUrl(payload) {
-  return payload?.checkoutUrl || payload?.checkout_url || payload?.paymentUrl || payload?.payment_url || payload?.url || null;
+  return (
+    payload?.checkoutUrl ||
+    payload?.checkouturl ||
+    payload?.checkout_url ||
+    payload?.paymentUrl ||
+    payload?.paymenturl ||
+    payload?.payment_url ||
+    payload?.redirectUrl ||
+    payload?.redirecturl ||
+    payload?.redirect_url ||
+    payload?.url ||
+    null
+  );
 }
 
 function pickProviderReference(payload, fallback) {
   return payload?.transactionid || payload?.transactionId || payload?.clienttransid || payload?.clientReference || payload?.reference || fallback;
 }
 
-async function requestReddeCollection({ amount, phone, reference, note }) {
+function getReddeMessage(payload) {
+  if (!payload) return "Redde payment request failed.";
+  return (
+    payload.message ||
+    payload.msg ||
+    payload.reason ||
+    payload.responseMessage ||
+    payload.statusMessage ||
+    payload.error ||
+    "Redde payment request failed."
+  );
+}
+
+async function requestReddeCollection({ amount, phone, paymentOption, reference, note }) {
   assertReddeConfigured();
 
   const payload = {
@@ -39,9 +89,8 @@ async function requestReddeCollection({ amount, phone, reference, note }) {
     currency: "GHS",
     description: note || "Project Spark payment",
     nickname: "Project Spark",
-    paymentoption: "momo",
+    paymentoption: paymentOption || env.redde.paymentOption,
     walletnumber: phone,
-    callback_url: env.redde.callbackUrl || undefined,
   };
 
   const response = await fetch(`${env.redde.baseUrl.replace(/\/$/, "")}/receive/`, {
@@ -55,16 +104,23 @@ async function requestReddeCollection({ amount, phone, reference, note }) {
 
   const result = await response.json().catch(() => null);
   if (!response.ok || result?.status === "error" || result?.success === false) {
-    throw new AppError(result?.message || "Redde payment request failed.", HTTP_STATUS.BAD_REQUEST, result);
+    throw new AppError(getReddeMessage(result), HTTP_STATUS.BAD_REQUEST, {
+      statusCode: response.status,
+      reddeStatus: result?.status || null,
+      reddeMessage: getReddeMessage(result),
+      reddeResponse: result,
+    });
   }
 
   return result;
 }
 
 export const reddePaymentService = {
-  async startQuotePayment({ quoteId, artisanId, customerUserId, amount, phone, note }) {
+  async startQuotePayment({ quoteId, artisanId, customerUserId, amount, phone, paymentOption, note }) {
     const normalizedAmount = Number(amount);
     const normalizedPhone = normalizePhone(phone);
+    const walletNumber = toLocalWalletNumber(phone);
+    const selectedPaymentOption = paymentOption || env.redde.paymentOption;
 
     if (!quoteId || !artisanId || !customerUserId) {
       throw new AppError("Quote, artisan, and customer are required.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
@@ -78,10 +134,13 @@ export const reddePaymentService = {
       throw new AppError("A valid mobile money number is required.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
     }
 
+    assertWalletMatchesNetwork(walletNumber, selectedPaymentOption);
+
     const reference = `ps-${crypto.randomUUID()}`;
     const reddeResult = await requestReddeCollection({
       amount: normalizedAmount,
-      phone: normalizedPhone,
+      phone: walletNumber,
+      paymentOption: selectedPaymentOption,
       reference,
       note,
     });

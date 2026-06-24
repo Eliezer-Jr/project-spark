@@ -28,12 +28,14 @@ export const env = {
     apiKey: process.env.FROG_API_KEY || "",
     username: process.env.FROG_USERNAME || "",
     senderId: process.env.FROG_SENDER_ID || "",
+    devOtpFallback: process.env.SMS_DEV_OTP_FALLBACK !== "false",
   },
   redde: {
     baseUrl: process.env.REDDE_BASE_URL || "https://api.reddeonline.com/v1",
     apiKey: process.env.REDDE_API_KEY || "",
     appId: process.env.REDDE_APP_ID || "",
     callbackUrl: process.env.REDDE_CALLBACK_URL || "",
+    paymentOption: process.env.REDDE_PAYMENT_OPTION || "MTN",
   },
   email: {
     host: process.env.SMTP_HOST || "",
