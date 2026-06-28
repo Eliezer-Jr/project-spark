@@ -31,28 +31,44 @@ function AppointmentsContent() {
 
   const load = async () => {
     if (!user) return;
-    const [apptRes, custRes] = await Promise.all([
-      db.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }),
-      db.from("customers").select("id, name").eq("artisan_id", user.id),
-    ]);
-    setAppointments((apptRes.data || []) as any[]);
-    setCustomers((custRes.data || []) as any[]);
+    try {
+      const [serverAppointments, custRes] = await Promise.all([
+        db.getMyAppointments(),
+        db.from("customers").select("id, name").eq("artisan_id", user.id),
+      ]);
+      setAppointments(serverAppointments);
+      setCustomers((custRes.data || []) as any[]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load appointments.");
+    }
   };
 
   useEffect(() => {
     void load();
     const subscription = db.onTableChange("appointments", () => void load());
-    return () => subscription.unsubscribe();
+    const interval = window.setInterval(() => void load(), 10_000);
+    return () => {
+      subscription.unsubscribe();
+      window.clearInterval(interval);
+    };
   }, [user]);
 
   const handleSave = async () => {
     if (!user || !form.title || !form.scheduled_date || !form.scheduled_time) return;
-    const { error } = await db.from("appointments").insert({
-      ...form,
-      artisan_id: user.id,
-      customer_id: form.customer_id || null,
-    });
-    if (error) { toast.error(error.message); return; }
+    try {
+      await db.createAppointment({
+        artisan_id: user.id,
+        customer_id: form.customer_id || null,
+        title: form.title,
+        description: form.description || null,
+        scheduled_date: form.scheduled_date,
+        scheduled_time: form.scheduled_time,
+        status: form.status as "pending" | "confirmed" | "completed" | "cancelled",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create appointment.");
+      return;
+    }
     toast.success("Appointment created");
     setDialogOpen(false);
     setForm({ title: "", description: "", customer_id: "", scheduled_date: "", scheduled_time: "", status: "pending" });
@@ -60,9 +76,15 @@ function AppointmentsContent() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await db.from("appointments").update({ status }).eq("id", id);
-    toast.success("Status updated");
-    load();
+    try {
+      await db.updateAppointment(id, {
+        status: status as "pending" | "confirmed" | "completed" | "cancelled",
+      });
+      toast.success("Status updated");
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update appointment.");
+    }
   };
 
   const filtered = filter === "all" ? appointments : appointments.filter((a) => a.status === filter);

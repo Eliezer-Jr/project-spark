@@ -6,10 +6,10 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateLabel, formatTimeLabel, getStatusClasses } from "@/lib/crm-helpers";
 import { Link } from "@tanstack/react-router";
-import { Users, Calendar, Wrench, Star, Wallet, Clock3, FileText, Inbox, CreditCard } from "lucide-react";
+import { Users, Calendar, Wrench, Star, Wallet, Clock3, FileText, Inbox, CreditCard, MapPin, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/artisan/dashboard")({
   component: ArtisanDashboard,
@@ -26,14 +26,26 @@ function ArtisanDashboard() {
 }
 
 function DashboardContent() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [refreshToken, setRefreshToken] = useState(0);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(
+    profile?.last_location_at ? "Your live location is available to customers." : "Live location has not been shared yet.",
+  );
+  const locationWatchRef = useRef<number | null>(null);
+  const locationTimeoutRef = useRef<number | null>(null);
   const [stats, setStats] = useState({ customers: 0, appointments: 0, services: 0, avgRating: 0, revenue: 0, paid: 0, pendingPayments: 0, pending: 0, quotes: 0, requests: 0 });
   const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
     const load = async () => {
+      try {
+        await db.getMyAppointments();
+      } catch (error) {
+        console.error("Could not refresh appointments from the server:", error);
+      }
+
       const [custRes, apptRes, svcRes, fbRes, quoteRes, requestRes, paymentRes] = await Promise.all([
         db.from("customers").select("id", { count: "exact" }).eq("artisan_id", user.id),
         db.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }).limit(5),
@@ -84,9 +96,114 @@ function DashboardContent() {
     return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
   }, []);
 
+  useEffect(
+    () => () => {
+      if (locationWatchRef.current != null) {
+        navigator.geolocation?.clearWatch(locationWatchRef.current);
+      }
+      if (locationTimeoutRef.current != null) {
+        window.clearTimeout(locationTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  const stopLocationWatch = () => {
+    if (locationWatchRef.current != null) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    if (locationTimeoutRef.current != null) {
+      window.clearTimeout(locationTimeoutRef.current);
+      locationTimeoutRef.current = null;
+    }
+  };
+
+  const updateCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("This browser does not support location access.");
+      return;
+    }
+    if (!window.isSecureContext) {
+      setLocationStatus("Location requires HTTPS, or localhost during development.");
+      return;
+    }
+
+    stopLocationWatch();
+    setUpdatingLocation(true);
+    setLocationStatus("Finding your location. Keep GPS on and stay near a window...");
+    let bestAccuracy = Number.POSITIVE_INFINITY;
+    let hasSavedLocation = false;
+
+    locationTimeoutRef.current = window.setTimeout(() => {
+      stopLocationWatch();
+      setUpdatingLocation(false);
+      setLocationStatus(
+        hasSavedLocation
+          ? `Best location saved, accurate to about ${Math.round(bestAccuracy)} m.`
+          : "No location was received. Enable device Location and browser permission, then try again.",
+      );
+    }, 45_000);
+
+    locationWatchRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        if (position.coords.accuracy >= bestAccuracy) return;
+        bestAccuracy = position.coords.accuracy;
+        setLocationStatus(`Location found. Improving accuracy from about ${Math.round(bestAccuracy)} m...`);
+
+        void db
+          .updateMyLocation(
+            position.coords.latitude,
+            position.coords.longitude,
+            new Date(position.timestamp).toISOString(),
+          )
+          .then(async () => {
+            hasSavedLocation = true;
+            await refreshProfile();
+            const accuracy = Math.round(position.coords.accuracy);
+            if (accuracy <= 100) {
+              stopLocationWatch();
+              setUpdatingLocation(false);
+              setLocationStatus(`Location updated, accurate to about ${accuracy} m.`);
+            } else {
+              setLocationStatus(`Location saved at about ${accuracy} m accuracy. Still improving...`);
+            }
+          })
+          .catch((error) => {
+            stopLocationWatch();
+            setLocationStatus(error instanceof Error ? error.message : "Could not save location.");
+            setUpdatingLocation(false);
+          })
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          stopLocationWatch();
+          setUpdatingLocation(false);
+          setLocationStatus("Location permission was denied. Allow precise location in browser settings and try again.");
+        } else if (!hasSavedLocation) {
+          setLocationStatus("Still searching. Check that device Location/GPS is switched on...");
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 15_000 },
+    );
+  };
+
   return (
     <>
-      <PageHeader title={`Welcome, ${profile?.full_name || "Artisan"}`} description="Here's your business overview" />
+      <PageHeader
+        title={`Welcome, ${profile?.full_name || "Artisan"}`}
+        description={locationStatus}
+        action={
+          <Button onClick={updateCurrentLocation} disabled={updatingLocation} className="gap-2">
+            {updatingLocation ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <MapPin className="h-4 w-4" />
+            )}
+            Update My Location
+          </Button>
+        }
+      />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <StatCard title="Customers" value={stats.customers} icon={Users} />
         <StatCard title="Upcoming Appointments" value={stats.appointments} icon={Calendar} />

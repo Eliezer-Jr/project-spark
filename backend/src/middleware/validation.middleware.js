@@ -292,6 +292,12 @@ export function validateProfileUpdate(req, _res, next) {
         "lastLongitude must be between -180 and 180.",
       );
     }
+    if (isProvided(req.body.lastLocationAt) && req.body.lastLocationAt !== null) {
+      ensure(
+        !Number.isNaN(Date.parse(req.body.lastLocationAt)),
+        "lastLocationAt must be a valid date and time.",
+      );
+    }
     next();
   } catch (error) {
     next(error);

@@ -38,7 +38,6 @@ import type { Database } from "@/types/database";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-type UserRole = Database["public"]["Tables"]["user_roles"]["Row"];
 
 const appointmentSearchSchema = z.object({
   artisanId: z.string().optional(),
@@ -75,29 +74,71 @@ function CustAppointmentsContent() {
   const load = async () => {
     if (!user) return;
 
-    const [customerAppointmentsRes, allAppointmentsRes] = await Promise.all([
-      db
+    try {
+      const localAppointmentsRes = await db
         .from("appointments")
         .select("*")
-        .eq("customer_user_id", user.id)
-        .order("scheduled_date", { ascending: false }),
-      db.from("appointments").select("*"),
-    ]);
-    setAppointments((customerAppointmentsRes.data || []) as Appointment[]);
-    setAllAppointments((allAppointmentsRes.data || []) as Appointment[]);
+        .eq("customer_user_id", user.id);
+      const [serverAppointments, serverArtisans] = await Promise.all([
+        db.getMyAppointments(),
+        db.getAvailableArtisans(),
+      ]);
+      const serverArtisanIds = new Set(serverArtisans.map((artisan) => artisan.id));
+      const mergedAppointments = [...serverAppointments];
 
-    const rolesRes = await db.from("user_roles").select("user_id").eq("role", "artisan");
-    const ids = ((rolesRes.data || []) as UserRole[]).map((role) => role.user_id);
-    if (ids.length) {
-      const { data: profiles } = await db.from("profiles").select("*").in("id", ids);
-      setArtisans((profiles || []) as Profile[]);
+      for (const localAppointment of (localAppointmentsRes.data || []) as Appointment[]) {
+        if (
+          serverAppointments.some((appointment) => appointment.id === localAppointment.id) ||
+          !serverArtisanIds.has(localAppointment.artisan_id)
+        ) {
+          continue;
+        }
+
+        const existingServerBooking = mergedAppointments.find(
+          (appointment) =>
+            appointment.artisan_id === localAppointment.artisan_id &&
+            appointment.title === localAppointment.title &&
+            appointment.scheduled_date === localAppointment.scheduled_date &&
+            appointment.scheduled_time.slice(0, 5) === localAppointment.scheduled_time.slice(0, 5),
+        );
+
+        if (existingServerBooking) {
+          db.discardCachedAppointment(localAppointment.id);
+          continue;
+        }
+
+        try {
+          const migrated = await db.createAppointment({
+            artisan_id: localAppointment.artisan_id,
+            category_id: localAppointment.category_id,
+            title: localAppointment.title,
+            description: localAppointment.description,
+            scheduled_date: localAppointment.scheduled_date,
+            scheduled_time: localAppointment.scheduled_time,
+          });
+          mergedAppointments.push(migrated);
+          db.discardCachedAppointment(localAppointment.id);
+        } catch (error) {
+          console.error("Could not migrate a local appointment:", error);
+        }
+      }
+
+      setAppointments(mergedAppointments);
+      setAllAppointments(mergedAppointments);
+      setArtisans(serverArtisans);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load appointments.");
     }
   };
 
   useEffect(() => {
     void load();
     const subscription = db.onTableChange("appointments", () => void load());
-    return () => subscription.unsubscribe();
+    const interval = window.setInterval(() => void load(), 10_000);
+    return () => {
+      subscription.unsubscribe();
+      window.clearInterval(interval);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -150,18 +191,16 @@ function CustAppointmentsContent() {
       return;
     }
 
-    const { error } = await db.from("appointments").insert({
-      artisan_id: form.artisan_id,
-      customer_user_id: user.id,
-      title: form.title,
-      description: form.description || null,
-      scheduled_date: form.scheduled_date,
-      scheduled_time: form.scheduled_time,
-      status: "pending",
-    });
-
-    if (error) {
-      toast.error(error.message);
+    try {
+      await db.createAppointment({
+        artisan_id: form.artisan_id,
+        title: form.title,
+        description: form.description || null,
+        scheduled_date: form.scheduled_date,
+        scheduled_time: form.scheduled_time,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not book appointment.");
       return;
     }
 
@@ -173,9 +212,10 @@ function CustAppointmentsContent() {
   };
 
   const cancelAppointment = async (id: string) => {
-    const { error } = await db.from("appointments").update({ status: "cancelled" }).eq("id", id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await db.updateAppointment(id, { status: "cancelled" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not cancel appointment.");
       return;
     }
 

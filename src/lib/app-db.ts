@@ -283,6 +283,27 @@ interface BackendAuthPayload {
   user: BackendAuthUser;
 }
 
+interface BackendAppointment {
+  id: string;
+  artisanId: string;
+  customerId: string | null;
+  customerUserId: string | null;
+  categoryId: string | null;
+  title: string;
+  description: string | null;
+  scheduledDate: string;
+  scheduledTime: string;
+  status: TableRow<"appointments">["status"];
+  createdAt: string;
+  updatedAt: string;
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 async function postApi<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
@@ -323,8 +344,8 @@ function backendUserToProfile(user: BackendAuthUser): TableRow<"profiles"> {
     full_name: user.fullName,
     phone: normalizePhone(user.phone || ""),
     location: user.location,
-    last_latitude: user.lastLatitude,
-    last_longitude: user.lastLongitude,
+    last_latitude: toFiniteNumber(user.lastLatitude),
+    last_longitude: toFiniteNumber(user.lastLongitude),
     last_location_at: user.lastLocationAt,
     specialization: user.specialization,
     bio: user.bio,
@@ -334,6 +355,35 @@ function backendUserToProfile(user: BackendAuthUser): TableRow<"profiles"> {
     is_active: user.isActive,
     created_at: user.createdAt,
   });
+}
+
+function backendAppointmentToRow(appointment: BackendAppointment): TableRow<"appointments"> {
+  return buildInsertedRow("appointments", {
+    id: appointment.id,
+    artisan_id: appointment.artisanId,
+    customer_id: appointment.customerId,
+    customer_user_id: appointment.customerUserId,
+    category_id: appointment.categoryId,
+    title: appointment.title,
+    description: appointment.description,
+    scheduled_date: appointment.scheduledDate,
+    scheduled_time: appointment.scheduledTime,
+    status: appointment.status,
+    created_at: appointment.createdAt,
+    updated_at: appointment.updatedAt,
+  });
+}
+
+function cacheAppointments(appointments: BackendAppointment[]) {
+  const rows = appointments.map(backendAppointmentToRow);
+  mutateState((state) => {
+    rows.forEach((row) => {
+      const index = state.tables.appointments.findIndex((item) => item.id === row.id);
+      if (index >= 0) state.tables.appointments[index] = row;
+      else state.tables.appointments.push(row);
+    });
+  });
+  return rows;
 }
 
 function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
@@ -710,7 +760,7 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         notify_sms: (input.notify_sms as boolean | undefined) ?? true,
         is_active: (input.is_active as boolean | undefined) ?? true,
         created_at: (input.created_at as string | undefined) ?? timestamp,
-        updated_at: timestamp,
+        updated_at: (input.updated_at as string | undefined) ?? timestamp,
       } as TableRow<T>;
     case "user_roles":
       return {
@@ -763,7 +813,7 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         scheduled_time: input.scheduled_time as string,
         status: (input.status as TableRow<"appointments">["status"] | undefined) ?? "pending",
         created_at: (input.created_at as string | undefined) ?? timestamp,
-        updated_at: timestamp,
+        updated_at: (input.updated_at as string | undefined) ?? timestamp,
       } as TableRow<T>;
     case "feedback":
       return {
@@ -1149,6 +1199,63 @@ export const db = {
       last_longitude: user.lastLongitude,
       last_location_at: user.lastLocationAt,
     }).eq("id", user.id);
+  },
+
+  async getMyAppointments() {
+    const appointments = await authenticatedApi<BackendAppointment[]>("/appointments");
+    return cacheAppointments(appointments);
+  },
+
+  async createAppointment(payload: {
+    artisan_id: string;
+    customer_id?: string | null;
+    category_id?: string | null;
+    title: string;
+    description?: string | null;
+    scheduled_date: string;
+    scheduled_time: string;
+    status?: TableRow<"appointments">["status"];
+  }) {
+    const appointment = await authenticatedApi<BackendAppointment>("/appointments", {
+      method: "POST",
+      body: JSON.stringify({
+        artisanId: payload.artisan_id,
+        customerId: payload.customer_id,
+        categoryId: payload.category_id,
+        title: payload.title,
+        description: payload.description,
+        scheduledDate: payload.scheduled_date,
+        scheduledTime: payload.scheduled_time,
+        status: payload.status,
+      }),
+    });
+    return cacheAppointments([appointment])[0];
+  },
+
+  async updateAppointment(id: string, payload: {
+    status?: TableRow<"appointments">["status"];
+    title?: string;
+    description?: string | null;
+    scheduled_date?: string;
+    scheduled_time?: string;
+  }) {
+    const appointment = await authenticatedApi<BackendAppointment>(`/appointments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: payload.status,
+        title: payload.title,
+        description: payload.description,
+        scheduledDate: payload.scheduled_date,
+        scheduledTime: payload.scheduled_time,
+      }),
+    });
+    return cacheAppointments([appointment])[0];
+  },
+
+  discardCachedAppointment(id: string) {
+    mutateState((state) => {
+      state.tables.appointments = state.tables.appointments.filter((item) => item.id !== id);
+    });
   },
 
   onTableChange(table: TableName, callback: () => void) {

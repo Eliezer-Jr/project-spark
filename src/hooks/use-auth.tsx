@@ -101,10 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let bestAccuracy = Number.POSITIVE_INFINITY;
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        // Network-based desktop fixes can be kilometres away. Keep the saved address
-        // fallback until the browser provides a reasonably precise GPS reading.
-        if (position.coords.accuracy > 500) return;
-
         const now = Date.now();
         const accuracyImproved = position.coords.accuracy < bestAccuracy;
         const refreshDue = now - lastSentAt >= 30_000;

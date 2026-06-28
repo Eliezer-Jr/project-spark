@@ -1,5 +1,13 @@
 import { query } from "../database/mysql.js";
 
+function toMySqlDateTime(value) {
+  if (value == null || value instanceof Date) return value;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toISOString().slice(0, 19).replace("T", " ");
+}
+
 function mapUserFields(payload = {}) {
   const entries = Object.entries({
     full_name: payload.fullName,
@@ -10,7 +18,7 @@ function mapUserFields(payload = {}) {
     location: payload.location,
     last_latitude: payload.lastLatitude,
     last_longitude: payload.lastLongitude,
-    last_location_at: payload.lastLocationAt,
+    last_location_at: toMySqlDateTime(payload.lastLocationAt),
     specialization: payload.specialization,
     bio: payload.bio,
     avatar_url: payload.avatarUrl,

@@ -14,6 +14,11 @@ function sanitizeUser(user) {
   };
 }
 
+function toMySqlDateTime(value) {
+  if (value == null) return value;
+  return new Date(value).toISOString().slice(0, 19).replace("T", " ");
+}
+
 export const userService = {
   async getAllUsers(filters = {}) {
     const users = await userModel.findAll();
@@ -67,7 +72,10 @@ export const userService = {
         payload.lastLatitude == null ? payload.lastLatitude : Number(payload.lastLatitude),
       lastLongitude:
         payload.lastLongitude == null ? payload.lastLongitude : Number(payload.lastLongitude),
-      lastLocationAt: payload.lastLocationAt,
+      lastLocationAt:
+        payload.lastLocationAt === undefined
+          ? undefined
+          : toMySqlDateTime(payload.lastLocationAt),
       specialization:
         typeof payload.specialization === "string"
           ? payload.specialization.trim() || null
