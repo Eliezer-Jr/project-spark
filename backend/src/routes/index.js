@@ -5,6 +5,7 @@ import customerRoutes from "./customer.routes.js";
 import dashboardRoutes from "./dashboard.routes.js";
 import feedbackRoutes from "./feedback.routes.js";
 import healthRoutes from "./health.routes.js";
+import messageRoutes from "./message.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import paymentRoutes from "./payment.routes.js";
 import serviceCategoryRoutes from "./service-category.routes.js";
@@ -15,6 +16,7 @@ import userRoutes from "./user.routes.js";
 const router = Router();
 
 router.use("/health", healthRoutes);
+router.use("/messages", messageRoutes);
 router.use("/system", systemRoutes);
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);

@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import {
@@ -541,6 +542,11 @@ function CustAppointmentsContent() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    <ContactPanel
+                      participantId={appointment.artisan_id}
+                      contextLabel={appointment.title}
+                      appointmentId={appointment.id}
+                    />
                     <LiveServiceTracker appointment={appointment} role="customer" />
                     {canCancel && (
                       <AlertDialog>

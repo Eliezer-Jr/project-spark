@@ -324,6 +324,32 @@ export interface TrackingParty {
   sharing: boolean;
 }
 
+export interface ChatParticipant {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  location: string | null;
+  specialization: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  role: AppRole;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  appointmentId: string | null;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface Conversation {
+  participant: ChatParticipant;
+  messages: ChatMessage[];
+}
+
 function toFiniteNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
@@ -1327,6 +1353,18 @@ export const db = {
   discardCachedAppointment(id: string) {
     mutateState((state) => {
       state.tables.appointments = state.tables.appointments.filter((item) => item.id !== id);
+    });
+  },
+
+  async getConversation(participantId: string, appointmentId?: string) {
+    const query = appointmentId ? `?appointmentId=${encodeURIComponent(appointmentId)}` : "";
+    return authenticatedApi<Conversation>(`/messages/${participantId}${query}`);
+  },
+
+  async sendMessage(recipientId: string, body: string, appointmentId?: string) {
+    return authenticatedApi<ChatMessage>("/messages", {
+      method: "POST",
+      body: JSON.stringify({ recipientId, body, appointmentId }),
     });
   },
 

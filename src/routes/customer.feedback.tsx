@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatDateLabel } from "@/lib/crm-helpers";
@@ -348,6 +349,11 @@ function CustFeedbackContent() {
                   <p className="mt-3 text-sm text-card-foreground">{feedback.comment}</p>
                 )}
                 <div className="mt-4 flex gap-2 border-t pt-3">
+                  <ContactPanel
+                    participantId={feedback.artisan_id}
+                    contextLabel={appointment?.title || "Completed service"}
+                    appointmentId={feedback.appointment_id || undefined}
+                  />
                   <Button
                     variant="ghost"
                     size="sm"

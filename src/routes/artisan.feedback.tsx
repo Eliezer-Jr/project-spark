@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
@@ -50,6 +51,13 @@ function FeedbackContent() {
               </div>
               {f.comment && <p className="text-sm text-card-foreground">{f.comment}</p>}
               <p className="mt-2 text-xs text-muted-foreground">{new Date(f.created_at).toLocaleDateString()}</p>
+              <div className="mt-3 border-t pt-3">
+                <ContactPanel
+                  participantId={f.customer_user_id}
+                  contextLabel="Service feedback"
+                  appointmentId={f.appointment_id || undefined}
+                />
+              </div>
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { useEffect, useState } from "react";
@@ -267,6 +268,13 @@ function AppointmentsContent() {
                   <AppointmentProgress appointment={appt} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {appt.customer_user_id && (
+                    <ContactPanel
+                      participantId={appt.customer_user_id}
+                      contextLabel={appt.title}
+                      appointmentId={appt.id}
+                    />
+                  )}
                   {appt.status === "pending" && (
                     <Button
                       size="sm"

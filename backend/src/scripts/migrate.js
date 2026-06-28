@@ -116,6 +116,10 @@ async function migrationAlreadyPresent(connection, filename) {
         (await columnExists(connection, "appointments", "artisan_location_sharing")) &&
         (await columnExists(connection, "appointments", "customer_location_sharing"))
       );
+    case "007_create_messages.sql":
+      return tableExists(connection, "messages");
+    case "008_scope_messages_to_appointments.sql":
+      return columnExists(connection, "messages", "appointment_id");
     default:
       return false;
   }

@@ -329,3 +329,17 @@ export function validateUserStatusUpdate(req, _res, next) {
     next(error);
   }
 }
+
+export function validateMessage(req, _res, next) {
+  try {
+    ensure(!isEmpty(req.body?.recipientId), "Message recipient is required.");
+    ensure(!isEmpty(req.body?.body), "Message cannot be empty.");
+    ensure(String(req.body.body).trim().length <= 2000, "Message must be 2,000 characters or less.");
+    if (isProvided(req.body.appointmentId)) {
+      ensure(!isEmpty(req.body.appointmentId), "Appointment is required for this conversation.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}

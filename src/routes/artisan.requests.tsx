@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatDateLabel, formatStatusLabel, getStatusClasses } from "@/lib/crm-helpers";
@@ -105,6 +106,10 @@ function ArtisanRequestsContent() {
                   </div>
 
                   <div className="grid gap-3 xl:min-w-80">
+                    <ContactPanel
+                      participantId={request.customer_user_id}
+                      contextLabel={request.title}
+                    />
                     <div>
                       <Label>Status</Label>
                       <Select value={request.status} onValueChange={(value) => updateRequest(request.id, { status: value }, "Request status updated")}>

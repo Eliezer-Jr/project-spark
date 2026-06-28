@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatCurrency, formatDateLabel, formatStatusLabel, getStatusClasses } from "@/lib/crm-helpers";
@@ -201,6 +202,12 @@ function ArtisanQuotesContent() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {quote.customer_user_id && (
+                      <ContactPanel
+                        participantId={quote.customer_user_id}
+                        contextLabel={quote.title}
+                      />
+                    )}
                     {quote.status === "draft" && (
                       <Button variant="outline" size="sm" onClick={() => updateQuote(quote.id, { status: "awaiting_response" }, "Quote sent for approval")}>
                         <ArrowRightCircle className="mr-2 h-4 w-4" />

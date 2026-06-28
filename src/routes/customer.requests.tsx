@@ -3,6 +3,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatDateLabel, formatStatusLabel, getStatusClasses } from "@/lib/crm-helpers";
@@ -266,6 +267,9 @@ function CustomerRequestsContent() {
                     )}
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
+                    {request.artisan_id && (
+                      <ContactPanel participantId={request.artisan_id} contextLabel={request.title} />
+                    )}
                     {(request.status === "reviewing" || request.response_note) && (
                       <Button asChild size="sm" variant="outline">
                         <Link to="/customer/quotes">

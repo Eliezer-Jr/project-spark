@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import {
@@ -220,6 +221,8 @@ function CustomerQuotesContent() {
                       </div>
                     )}
                   </div>
+
+                  <ContactPanel participantId={quote.artisan_id} contextLabel={quote.title} />
 
                   {(quote.status === "awaiting_response" ||
                     quote.status === "changes_requested") && (
