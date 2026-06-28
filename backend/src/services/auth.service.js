@@ -84,7 +84,16 @@ export const authService = {
     };
   },
 
-  async signup({ phone, otpcode, fullName, email, role = "customer" }) {
+  async signup({
+    phone,
+    otpcode,
+    fullName,
+    email,
+    role = "customer",
+    location,
+    specialization,
+    bio,
+  }) {
     const normalizedPhone = normalizePhone(phone);
     const normalizedEmail = email?.trim()?.toLowerCase() || null;
     if (!normalizedPhone || !otpcode?.trim() || !fullName?.trim()) {
@@ -117,9 +126,12 @@ export const authService = {
       fullName: fullName.trim(),
       role,
       phone: normalizedPhone,
-      location: null,
-      specialization: null,
-      bio: null,
+      location: location?.trim() || null,
+      lastLatitude: null,
+      lastLongitude: null,
+      lastLocationAt: null,
+      specialization: role === "artisan" ? specialization?.trim() || null : null,
+      bio: bio?.trim() || null,
       avatarUrl: null,
       notifyEmail: true,
       notifySms: true,

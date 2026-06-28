@@ -63,6 +63,11 @@ export const userService = {
       phone: typeof payload.phone === "string" ? payload.phone.trim() || null : payload.phone,
       location:
         typeof payload.location === "string" ? payload.location.trim() || null : payload.location,
+      lastLatitude:
+        payload.lastLatitude == null ? payload.lastLatitude : Number(payload.lastLatitude),
+      lastLongitude:
+        payload.lastLongitude == null ? payload.lastLongitude : Number(payload.lastLongitude),
+      lastLocationAt: payload.lastLocationAt,
       specialization:
         typeof payload.specialization === "string"
           ? payload.specialization.trim() || null

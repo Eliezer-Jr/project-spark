@@ -27,6 +27,7 @@ function ArtisanDashboard() {
 
 function DashboardContent() {
   const { user, profile } = useAuth();
+  const [refreshToken, setRefreshToken] = useState(0);
   const [stats, setStats] = useState({ customers: 0, appointments: 0, services: 0, avgRating: 0, revenue: 0, paid: 0, pendingPayments: 0, pending: 0, quotes: 0, requests: 0 });
   const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
 
@@ -63,6 +64,40 @@ function DashboardContent() {
       setRecentAppointments(appointments);
     };
     load();
+  }, [refreshToken, user]);
+
+  useEffect(() => {
+    const subscriptions = [
+      "customers",
+      "appointments",
+      "service_records",
+      "feedback",
+      "quotes",
+      "work_requests",
+      "payments",
+    ].map((table) =>
+      db.onTableChange(table as Parameters<typeof db.onTableChange>[0], () =>
+        setRefreshToken((value) => value + 1),
+      ),
+    );
+
+    return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
+  }, []);
+
+  useEffect(() => {
+    if (!user || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void db.from("profiles").update({
+          last_latitude: position.coords.latitude,
+          last_longitude: position.coords.longitude,
+          last_location_at: new Date().toISOString(),
+        }).eq("id", user.id);
+      },
+      () => undefined,
+      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 },
+    );
   }, [user]);
 
   return (

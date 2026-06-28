@@ -157,7 +157,7 @@ function CustomersContent() {
               <div className="space-y-3 mt-2">
                 <div><Label>Name *</Label><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="mt-1" /></div>
                 <div><Label>Email</Label><Input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="mt-1" /></div>
-                <div><Label>Phone</Label><Input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="mt-1" /></div>
+                <div><Label>Phone</Label><Input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value.replace(/\D/g, "") })} inputMode="numeric" pattern="[0-9]*" className="mt-1" /></div>
                 <div><Label>Address</Label><Input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} className="mt-1" /></div>
                 <div><Label>Notes</Label><Textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} className="mt-1 min-h-24" /></div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Update" : "Add"} Customer</Button>

@@ -52,6 +52,8 @@ function ArtisanQuotesContent() {
 
   useEffect(() => {
     void load();
+    const subscription = db.onTableChange("quotes", () => void load());
+    return () => subscription.unsubscribe();
   }, [user]);
 
   const stats = useMemo(() => ({

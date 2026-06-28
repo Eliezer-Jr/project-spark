@@ -21,8 +21,12 @@ function FeedbackContent() {
 
   useEffect(() => {
     if (!user) return;
-    db.from("feedback").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false })
-      .then(({ data }) => setFeedbacks((data || []) as any[]));
+    const load = () =>
+      db.from("feedback").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false })
+        .then(({ data }) => setFeedbacks((data || []) as any[]));
+    void load();
+    const subscription = db.onTableChange("feedback", () => void load());
+    return () => subscription.unsubscribe();
   }, [user]);
 
   const avgRating = feedbacks.length ? (feedbacks.reduce((s, f) => s + f.rating, 0) / feedbacks.length).toFixed(1) : "—";

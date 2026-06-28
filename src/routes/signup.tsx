@@ -18,6 +18,9 @@ function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [location, setLocation] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [bio, setBio] = useState("");
   const [otpcode, setOtpcode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AppRole>("customer");
@@ -27,7 +30,11 @@ function SignupPage() {
     e.preventDefault();
     setLoading(true);
     const { error } = otpSent
-      ? await signUp(phone, otpcode, fullName, selectedRole, email)
+      ? await signUp(phone, otpcode, fullName, selectedRole, email, {
+          location,
+          specialization: selectedRole === "artisan" ? specialization : undefined,
+          bio,
+        })
       : await requestOtp(phone, "signup");
     setLoading(false);
 
@@ -79,8 +86,10 @@ function SignupPage() {
               id="phone"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+233 24 123 4567"
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+              placeholder="0241234567"
+              inputMode="numeric"
+              pattern="[0-9]*"
               required
               className="mt-1"
               disabled={otpSent || loading}
@@ -98,10 +107,61 @@ function SignupPage() {
               disabled={loading}
             />
           </div>
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Madina, Accra"
+              required
+              className="mt-1"
+              disabled={loading}
+            />
+          </div>
+          {selectedRole === "artisan" && (
+            <div>
+              <Label htmlFor="specialization">Specialization</Label>
+              <Input
+                id="specialization"
+                value={specialization}
+                onChange={(e) => setSpecialization(e.target.value)}
+                placeholder="e.g. Plumbing, Electrical"
+                required
+                className="mt-1"
+                disabled={loading}
+              />
+            </div>
+          )}
+          <div>
+            <Label htmlFor="bio">
+              {selectedRole === "artisan" ? "Business Description" : "Service Needs"}
+            </Label>
+            <Input
+              id="bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder={
+                selectedRole === "artisan"
+                  ? "Describe your services and experience"
+                  : "What services do you usually need?"
+              }
+              className="mt-1"
+              disabled={loading}
+            />
+          </div>
           {otpSent && (
             <div>
               <Label htmlFor="otp">OTP Code</Label>
-              <InputOTP id="otp" maxLength={5} value={otpcode} onChange={setOtpcode} className="mt-2">
+              <InputOTP
+                id="otp"
+                maxLength={5}
+                value={otpcode}
+                onChange={(value) => setOtpcode(value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="mt-2"
+              >
                 <InputOTPGroup>
                   {[0, 1, 2, 3, 4].map((index) => (
                     <InputOTPSlot key={index} index={index} />

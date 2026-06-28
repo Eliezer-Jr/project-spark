@@ -11,6 +11,9 @@ export interface AuthUser {
   user_metadata: {
     full_name?: string;
     role?: AppRole;
+    location?: string;
+    specialization?: string;
+    bio?: string;
   };
 }
 
@@ -47,6 +50,7 @@ const STORAGE_KEY = "artisancrm.local-data.v1";
 const AUTH_TOKEN_KEY = "artisancrm.auth-token";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 const listeners = new Set<(event: AuthChangeEvent, session: AuthSession | null) => void>();
+const tableListeners = new Map<TableName, Set<() => void>>();
 
 let memoryState: AppState = createSeedState();
 
@@ -72,6 +76,9 @@ function mergeMissingById<T extends { id: string }>(rows: T[], seedRows: T[]): T
 function normalizeProfiles(rows: TableRow<"profiles">[]): TableRow<"profiles">[] {
   return rows.map((row) => ({
     ...row,
+    last_latitude: row.last_latitude ?? null,
+    last_longitude: row.last_longitude ?? null,
+    last_location_at: row.last_location_at ?? null,
     notify_email: row.notify_email ?? true,
     notify_sms: row.notify_sms ?? true,
   }));
@@ -166,6 +173,21 @@ function hasWindow() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+if (hasWindow()) {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== STORAGE_KEY || !event.newValue) return;
+
+    try {
+      memoryState = normalizeState(JSON.parse(event.newValue) as Partial<AppState>);
+      tableListeners.forEach((listenersForTable) => {
+        listenersForTable.forEach((listener) => listener());
+      });
+    } catch {
+      // Ignore malformed external storage updates and retain the last valid state.
+    }
+  });
+}
+
 function readState(): AppState {
   if (!hasWindow()) {
     return clone(memoryState);
@@ -209,6 +231,7 @@ function mutateState<T>(updater: (state: AppState) => T): T {
 }
 
 function createAuthUser(user: StoredAuthUser): AuthUser {
+  const profile = readState().tables.profiles.find((row) => row.id === user.id);
   return {
     id: user.id,
     email: user.email,
@@ -216,6 +239,9 @@ function createAuthUser(user: StoredAuthUser): AuthUser {
     user_metadata: {
       full_name: user.full_name,
       role: user.role,
+      location: profile?.location ?? undefined,
+      specialization: profile?.specialization ?? undefined,
+      bio: profile?.bio ?? undefined,
     },
   };
 }
@@ -239,6 +265,9 @@ interface BackendAuthUser {
   role: AppRole;
   phone: string | null;
   location: string | null;
+  lastLatitude: number | null;
+  lastLongitude: number | null;
+  lastLocationAt: string | null;
   specialization: string | null;
   bio: string | null;
   avatarUrl: string | null;
@@ -293,6 +322,9 @@ function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
       full_name: auth.user.fullName,
       phone: normalizedPhone,
       location: auth.user.location,
+      last_latitude: auth.user.lastLatitude,
+      last_longitude: auth.user.lastLongitude,
+      last_location_at: auth.user.lastLocationAt,
       specialization: auth.user.specialization,
       bio: auth.user.bio,
       avatar_url: auth.user.avatarUrl,
@@ -346,6 +378,10 @@ function getSessionFromState(state: AppState): AuthSession | null {
 function emitAuthChange(event: AuthChangeEvent) {
   const session = getSessionFromState(readState());
   listeners.forEach((listener) => listener(event, session));
+}
+
+function emitTableChange(table: TableName) {
+  tableListeners.get(table)?.forEach((listener) => listener());
 }
 
 function createSeedState(): AppState {
@@ -414,6 +450,9 @@ function createSeedState(): AppState {
           full_name: "Admin User",
           phone: "+233 20 000 0000",
           location: "Accra",
+          last_latitude: 5.560014,
+          last_longitude: -0.205744,
+          last_location_at: createdAt,
           specialization: null,
           bio: "Platform administrator",
           avatar_url: null,
@@ -428,6 +467,9 @@ function createSeedState(): AppState {
           full_name: "Kojo Mensah",
           phone: "+233 24 123 4567",
           location: "Kumasi",
+          last_latitude: 6.6885,
+          last_longitude: -1.6244,
+          last_location_at: createdAt,
           specialization: "Electrical",
           bio: "Residential and small business electrical repairs.",
           avatar_url: null,
@@ -442,6 +484,9 @@ function createSeedState(): AppState {
           full_name: "Esi Boateng",
           phone: "+233 24 222 3311",
           location: "Madina, Accra",
+          last_latitude: 5.6826,
+          last_longitude: -0.1645,
+          last_location_at: createdAt,
           specialization: "Plumbing",
           bio: "Leak repairs, bathroom fittings, and routine plumbing maintenance.",
           avatar_url: null,
@@ -456,6 +501,9 @@ function createSeedState(): AppState {
           full_name: "Yaw Tetteh",
           phone: "+233 27 444 1188",
           location: "Tema",
+          last_latitude: 5.6698,
+          last_longitude: -0.0166,
+          last_location_at: createdAt,
           specialization: "Carpentry",
           bio: "Custom shelves, door repairs, and furniture assembly.",
           avatar_url: null,
@@ -470,6 +518,9 @@ function createSeedState(): AppState {
           full_name: "Ama Owusu",
           phone: "+233 55 987 6543",
           location: "Accra",
+          last_latitude: 5.560014,
+          last_longitude: -0.205744,
+          last_location_at: createdAt,
           specialization: null,
           bio: null,
           avatar_url: null,
@@ -626,6 +677,9 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         full_name: (input.full_name as string) ?? "New User",
         phone: (input.phone as string | null) ?? null,
         location: (input.location as string | null) ?? null,
+        last_latitude: (input.last_latitude as number | null) ?? null,
+        last_longitude: (input.last_longitude as number | null) ?? null,
+        last_location_at: (input.last_location_at as string | null) ?? null,
         specialization: (input.specialization as string | null) ?? null,
         bio: (input.bio as string | null) ?? null,
         avatar_url: (input.avatar_url as string | null) ?? null,
@@ -857,7 +911,7 @@ class MutationQueryBuilder<T extends TableName> implements PromiseLike<
   }
 
   private async execute(): Promise<QueryResponse<TableRow<T>[]>> {
-    return mutateState((state) => {
+    const result = mutateState((state) => {
       const tableRows = state.tables[this.table] as TableRow<T>[];
       const matches = (row: TableRow<T>) => this.filters.every((filter) => filter(row));
 
@@ -886,6 +940,8 @@ class MutationQueryBuilder<T extends TableName> implements PromiseLike<
       const changedRows = updated.filter(matches);
       return { data: clone(changedRows), error: null };
     });
+    emitTableChange(this.table);
+    return result;
   }
 }
 
@@ -899,12 +955,14 @@ class TableClient<T extends TableName> {
   async insert(
     payload: Partial<TableRow<T>> | Array<Partial<TableRow<T>>>,
   ): Promise<QueryResponse<TableRow<T>[]>> {
-    return mutateState((state) => {
+    const result = mutateState((state) => {
       const inputs = Array.isArray(payload) ? payload : [payload];
       const inserted = inputs.map((item) => buildInsertedRow(this.table, item));
       state.tables[this.table].push(...(inserted as Tables[T]["Row"][]));
       return { data: clone(inserted), error: null };
     });
+    emitTableChange(this.table);
+    return result;
   }
 
   update(payload: Partial<TableRow<T>>) {
@@ -962,7 +1020,15 @@ export const db = {
       phone: string;
       otpcode: string;
       email?: string;
-      options?: { data?: { full_name?: string; role?: AppRole } };
+      options?: {
+        data?: {
+          full_name?: string;
+          role?: AppRole;
+          location?: string;
+          specialization?: string;
+          bio?: string;
+        };
+      };
     }): Promise<{ data: { user: AuthUser | null }; error: Error | null }> {
       const normalizedPhone = normalizePhone(phone);
       const normalizedEmail = email?.trim().toLowerCase() || "";
@@ -974,6 +1040,9 @@ export const db = {
           email: normalizedEmail || undefined,
           fullName: options?.data?.full_name,
           role: options?.data?.role ?? "customer",
+          location: options?.data?.location,
+          specialization: options?.data?.specialization,
+          bio: options?.data?.bio,
         });
         syncBackendUser(auth, "SIGNED_UP");
         return { data: { user: createAuthUser(readState().authUsers.find((user) => user.id === auth.user.id)!) }, error: null };
@@ -1017,5 +1086,16 @@ export const db = {
 
   from<T extends TableName>(table: T) {
     return new TableClient(table);
+  },
+
+  onTableChange(table: TableName, callback: () => void) {
+    const listenersForTable = tableListeners.get(table) ?? new Set<() => void>();
+    listenersForTable.add(callback);
+    tableListeners.set(table, listenersForTable);
+    return {
+      unsubscribe() {
+        listenersForTable.delete(callback);
+      },
+    };
   },
 };

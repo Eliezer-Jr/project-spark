@@ -50,6 +50,11 @@ function CustomerQuotesContent() {
 
   useEffect(() => {
     void load();
+    const subscriptions = [
+      db.onTableChange("quotes", () => void load()),
+      db.onTableChange("payments", () => void load()),
+    ];
+    return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
   }, [user]);
 
   const updateQuote = async (quoteId: string, patch: Record<string, unknown>, successMessage: string) => {
@@ -258,7 +263,11 @@ function CustomerQuotesContent() {
                             <Label>Mobile money number</Label>
                             <Input
                               value={paymentPhone}
-                              onChange={(event) => setPaymentPhone(event.target.value)}
+                              onChange={(event) =>
+                                setPaymentPhone(event.target.value.replace(/\D/g, ""))
+                              }
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               className="mt-1"
                               placeholder="+233..."
                           />

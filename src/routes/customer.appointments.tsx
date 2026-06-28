@@ -96,6 +96,8 @@ function CustAppointmentsContent() {
 
   useEffect(() => {
     void load();
+    const subscription = db.onTableChange("appointments", () => void load());
+    return () => subscription.unsubscribe();
   }, [user]);
 
   useEffect(() => {

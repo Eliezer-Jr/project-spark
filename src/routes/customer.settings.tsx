@@ -72,8 +72,12 @@ function CustSettingsContent() {
               <Label>Phone</Label>
               <Input
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+233..."
+                onChange={(e) =>
+                  setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })
+                }
+                placeholder="0559876543"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="mt-1"
               />
             </div>

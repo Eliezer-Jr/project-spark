@@ -20,6 +20,9 @@ export interface Database {
           full_name: string;
           phone: string | null;
           location: string | null;
+          last_latitude: number | null;
+          last_longitude: number | null;
+          last_location_at: string | null;
           specialization: string | null;
           bio: string | null;
           avatar_url: string | null;

@@ -39,7 +39,11 @@ function AppointmentsContent() {
     setCustomers((custRes.data || []) as any[]);
   };
 
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => {
+    void load();
+    const subscription = db.onTableChange("appointments", () => void load());
+    return () => subscription.unsubscribe();
+  }, [user]);
 
   const handleSave = async () => {
     if (!user || !form.title || !form.scheduled_date || !form.scheduled_time) return;

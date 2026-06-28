@@ -89,6 +89,20 @@ function resolveLocationCoordinates(
   return geocoded[normalized] ?? resolveFallbackLocationCoordinates(location);
 }
 
+function resolveArtisanCoordinates(artisan: Profile, geocoded: CoordinateLookup) {
+  if (
+    Number.isFinite(artisan.last_latitude) &&
+    Number.isFinite(artisan.last_longitude)
+  ) {
+    return {
+      lat: artisan.last_latitude as number,
+      lng: artisan.last_longitude as number,
+    };
+  }
+
+  return resolveLocationCoordinates(artisan.location, geocoded);
+}
+
 function readGeocodeCache(): CoordinateLookup {
   if (typeof window === "undefined") return {};
 
@@ -190,6 +204,7 @@ function BrowseContent() {
     readGeocodeCache(),
   );
   const [locationStatus, setLocationStatus] = useState("Resolving saved locations on the map.");
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -247,6 +262,21 @@ function BrowseContent() {
       setStatsByArtisan(nextStats);
     };
     load();
+  }, [refreshToken]);
+
+  useEffect(() => {
+    const subscriptions = [
+      "profiles",
+      "feedback",
+      "service_records",
+      "appointments",
+    ].map((table) =>
+      db.onTableChange(table as Parameters<typeof db.onTableChange>[0], () =>
+        setRefreshToken((value) => value + 1),
+      ),
+    );
+
+    return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
   }, []);
 
   useEffect(() => {
@@ -327,7 +357,7 @@ function BrowseContent() {
   const artisansWithDistance: ArtisanWithDistance[] = useMemo(
     () =>
       artisans.map((artisan) => {
-        const coordinates = resolveLocationCoordinates(artisan.location, geocodedLocations);
+        const coordinates = resolveArtisanCoordinates(artisan, geocodedLocations);
         const distanceKm =
           userCoordinates && coordinates ? distanceBetweenKm(userCoordinates, coordinates) : null;
         return { ...artisan, coordinates, distanceKm };
@@ -532,6 +562,11 @@ function BrowseContent() {
                       <MapPin className="h-4 w-4 shrink-0 text-primary" />
                       <span>{selectedArtisan.location}</span>
                     </div>
+                  )}
+                  {selectedArtisan.last_location_at && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Last location update: {new Date(selectedArtisan.last_location_at).toLocaleString()}
+                    </p>
                   )}
 
                   {selectedArtisan.bio && (

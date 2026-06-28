@@ -7,6 +7,9 @@ interface Profile {
   full_name: string;
   phone: string | null;
   location: string | null;
+  last_latitude: number | null;
+  last_longitude: number | null;
+  last_location_at: string | null;
   specialization: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -31,6 +34,11 @@ interface AuthContextType {
     fullName: string,
     role: AppRole,
     email?: string,
+    details?: {
+      location?: string;
+      specialization?: string;
+      bio?: string;
+    },
   ) => Promise<{ error: Error | null }>;
   signIn: (phone: string, otpcode: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -97,12 +105,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fullName: string,
     selectedRole: AppRole,
     email?: string,
+    details?: {
+      location?: string;
+      specialization?: string;
+      bio?: string;
+    },
   ) => {
     const { error } = await db.auth.signUpWithOtp({
       phone,
       otpcode,
       email,
-      options: { data: { full_name: fullName, role: selectedRole } },
+      options: {
+        data: {
+          full_name: fullName,
+          role: selectedRole,
+          location: details?.location,
+          specialization: details?.specialization,
+          bio: details?.bio,
+        },
+      },
     });
     if (!error) setRole(selectedRole);
     return { error };

@@ -52,6 +52,11 @@ function CustFeedbackContent() {
 
   useEffect(() => {
     void load();
+    const subscriptions = [
+      db.onTableChange("feedback", () => void load()),
+      db.onTableChange("appointments", () => void load()),
+    ];
+    return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
   }, [user]);
 
   const eligibleAppointments = useMemo(

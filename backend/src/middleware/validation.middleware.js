@@ -24,6 +24,10 @@ function ensureEmail(value, message) {
   ensure(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim()), message);
 }
 
+function ensurePhone(value, message) {
+  ensure(/^\+?\d{9,15}$/.test(String(value).replace(/\s+/g, "")), message);
+}
+
 function ensureDate(value, message) {
   ensure(/^\d{4}-\d{2}-\d{2}$/.test(String(value)), message);
 }
@@ -47,7 +51,9 @@ function ensureBodyNotEmpty(body, message = "At least one field must be provided
 export function validateLogin(req, _res, next) {
   try {
     ensure(!isEmpty(req.body.phone), "Phone number is required.");
+    ensurePhone(req.body.phone, "Phone number must contain numbers only.");
     ensure(!isEmpty(req.body.otpcode), "OTP code is required.");
+    ensure(/^\d{5}$/.test(String(req.body.otpcode)), "OTP code must contain 5 numbers.");
     next();
   } catch (error) {
     next(error);
@@ -57,6 +63,7 @@ export function validateLogin(req, _res, next) {
 export function validateOtpRequest(req, _res, next) {
   try {
     ensure(!isEmpty(req.body.phone), "Phone number is required.");
+    ensurePhone(req.body.phone, "Phone number must contain numbers only.");
     if (isProvided(req.body.purpose)) {
       ensureEnum(req.body.purpose, ["login", "signup"], "OTP purpose must be login or signup.");
     }
@@ -70,12 +77,18 @@ export function validateSignup(req, _res, next) {
   try {
     ensure(!isEmpty(req.body.fullName), "Full name is required.");
     ensure(!isEmpty(req.body.phone), "Phone number is required.");
+    ensurePhone(req.body.phone, "Phone number must contain numbers only.");
     ensure(!isEmpty(req.body.otpcode), "OTP code is required.");
+    ensure(/^\d{5}$/.test(String(req.body.otpcode)), "OTP code must contain 5 numbers.");
+    ensure(!isEmpty(req.body.location), "Location is required.");
     if (isProvided(req.body.email) && !isEmpty(req.body.email)) {
       ensureEmail(req.body.email, "A valid email address is required.");
     }
     if (isProvided(req.body.role)) {
       ensureEnum(req.body.role, APP_ROLES, "Role must be admin, artisan or customer.");
+    }
+    if (req.body.role === "artisan") {
+      ensure(!isEmpty(req.body.specialization), "Artisan specialization is required.");
     }
     next();
   } catch (error) {
@@ -244,6 +257,9 @@ export function validateProfileUpdate(req, _res, next) {
       "fullName",
       "phone",
       "location",
+      "lastLatitude",
+      "lastLongitude",
+      "lastLocationAt",
       "specialization",
       "bio",
       "avatarUrl",
@@ -259,6 +275,22 @@ export function validateProfileUpdate(req, _res, next) {
     }
     if (isProvided(req.body.notifySms)) {
       ensure(typeof req.body.notifySms === "boolean", "notifySms must be a boolean value.");
+    }
+    if (isProvided(req.body.lastLatitude)) {
+      ensure(
+        Number.isFinite(Number(req.body.lastLatitude)) &&
+          Number(req.body.lastLatitude) >= -90 &&
+          Number(req.body.lastLatitude) <= 90,
+        "lastLatitude must be between -90 and 90.",
+      );
+    }
+    if (isProvided(req.body.lastLongitude)) {
+      ensure(
+        Number.isFinite(Number(req.body.lastLongitude)) &&
+          Number(req.body.lastLongitude) >= -180 &&
+          Number(req.body.lastLongitude) <= 180,
+        "lastLongitude must be between -180 and 180.",
+      );
     }
     next();
   } catch (error) {

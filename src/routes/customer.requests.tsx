@@ -78,6 +78,8 @@ function CustomerRequestsContent() {
 
   useEffect(() => {
     void load();
+    const subscription = db.onTableChange("work_requests", () => void load());
+    return () => subscription.unsubscribe();
   }, [user]);
 
   const handleCreate = async () => {

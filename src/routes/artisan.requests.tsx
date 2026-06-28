@@ -39,6 +39,8 @@ function ArtisanRequestsContent() {
 
   useEffect(() => {
     void load();
+    const subscription = db.onTableChange("work_requests", () => void load());
+    return () => subscription.unsubscribe();
   }, [user]);
 
   const summary = useMemo(() => ({

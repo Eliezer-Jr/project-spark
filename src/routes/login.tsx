@@ -67,8 +67,10 @@ function LoginPage() {
               id="phone"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+233 55 987 6543"
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+              placeholder="0559876543"
+              inputMode="numeric"
+              pattern="[0-9]*"
               required
               className="mt-1"
               disabled={otpSent || loading}
@@ -77,7 +79,15 @@ function LoginPage() {
           {otpSent && (
             <div>
               <Label htmlFor="otp">OTP Code</Label>
-              <InputOTP id="otp" maxLength={5} value={otpcode} onChange={setOtpcode} className="mt-2">
+              <InputOTP
+                id="otp"
+                maxLength={5}
+                value={otpcode}
+                onChange={(value) => setOtpcode(value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="mt-2"
+              >
                 <InputOTPGroup>
                   {[0, 1, 2, 3, 4].map((index) => (
                     <InputOTPSlot key={index} index={index} />
