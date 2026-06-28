@@ -93,7 +93,7 @@ export const appointmentService = {
       updatedAt: new Date().toISOString(),
     });
 
-    await notificationMessageService.appointmentCreated(appointment);
+    await notificationMessageService.appointmentCreated(appointment, payload.createdByRole);
     return appointment;
   },
 
@@ -113,6 +113,17 @@ export const appointmentService = {
 
     if (!allowedStatuses.includes(nextStatus)) {
       throw new AppError(MESSAGES.INVALID_STATUS_TRANSITION, HTTP_STATUS.UNPROCESSABLE_ENTITY);
+    }
+
+    if (
+      nextStatus === "completed" &&
+      existing.customerUserId &&
+      existing.journeyStatus !== "arrived"
+    ) {
+      throw new AppError(
+        "Confirm arrival before completing this appointment.",
+        HTTP_STATUS.UNPROCESSABLE_ENTITY,
+      );
     }
 
     await domainService.ensureArtisanExists(artisanId);
@@ -164,7 +175,7 @@ export const appointmentService = {
       throw new AppError(MESSAGES.APPOINTMENT_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
-    await notificationMessageService.appointmentUpdated(updated, existing.status);
+    await notificationMessageService.appointmentUpdated(updated, existing);
     return updated;
   },
 

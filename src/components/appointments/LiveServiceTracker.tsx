@@ -72,9 +72,11 @@ function formatRouteDistance(metres: number) {
 export function LiveServiceTracker({
   appointment,
   role,
+  onAppointmentChange,
 }: {
   appointment: Appointment;
   role: "artisan" | "customer";
+  onAppointmentChange?: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
@@ -122,7 +124,7 @@ export function LiveServiceTracker({
     : tripDistance == null
       ? null
       : Math.max(1, Math.round((tripDistance / 28) * 60));
-  const canTrack = appointment.status === "pending" || appointment.status === "confirmed";
+  const canTrack = appointment.status === "confirmed";
 
   useEffect(() => {
     if (!open || !tracking) return;
@@ -272,6 +274,7 @@ export function LiveServiceTracker({
               : "Location shared for this service only.",
           );
           await load();
+          await onAppointmentChange?.();
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Could not start location sharing.");
         } finally {
@@ -302,6 +305,7 @@ export function LiveServiceTracker({
           : { customer_location_sharing: false },
       );
       await load();
+      await onAppointmentChange?.();
       toast.success("Live location sharing stopped.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not stop sharing.");
@@ -315,6 +319,7 @@ export function LiveServiceTracker({
     try {
       await db.updateAppointment(appointment.id, { journey_status: "arrived" });
       await load();
+      await onAppointmentChange?.();
       toast.success("Customer notified that you have arrived.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update arrival.");

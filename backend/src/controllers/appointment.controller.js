@@ -30,7 +30,7 @@ export async function getAppointments(req, res) {
 }
 
 export async function createAppointment(req, res) {
-  const payload = { ...req.body };
+  const payload = { ...req.body, createdByRole: req.auth.role };
 
   if (req.auth.role === "artisan") {
     payload.artisanId = req.auth.userId;

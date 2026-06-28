@@ -47,7 +47,7 @@ async function notifyUser(user, message) {
 }
 
 export const notificationMessageService = {
-  async appointmentCreated(appointment) {
+  async appointmentCreated(appointment, createdByRole) {
     const [artisan, customer] = await Promise.all([
       userModel.findById(appointment.artisanId),
       appointment.customerUserId ? userModel.findById(appointment.customerUserId) : null,
@@ -56,6 +56,16 @@ export const notificationMessageService = {
     const customerName = customer?.fullName || "A customer";
     const artisanName = artisan?.fullName || "your artisan";
     const dateTime = formatAppointmentDateTime(appointment);
+
+    if (createdByRole === "artisan") {
+      await notifyUser(customer, {
+        subject: `Appointment scheduled: ${appointment.title}`,
+        smsText: `${artisanName} scheduled "${appointment.title}" for ${dateTime}. Check your appointments for details.`,
+        emailText: `${artisanName} scheduled "${appointment.title}" for ${dateTime}. Please check your appointments for details.`,
+        emailHtml: `<p><strong>${artisanName}</strong> scheduled <strong>${appointment.title}</strong> for ${dateTime}.</p><p>Please check your appointments for details.</p>`,
+      });
+      return;
+    }
 
     await notifyUser(artisan, {
       subject: `New appointment request: ${appointment.title}`,
@@ -76,7 +86,7 @@ export const notificationMessageService = {
     });
   },
 
-  async appointmentUpdated(appointment, previousStatus) {
+  async appointmentUpdated(appointment, previousAppointment) {
     const [artisan, customer] = await Promise.all([
       userModel.findById(appointment.artisanId),
       appointment.customerUserId ? userModel.findById(appointment.customerUserId) : null,
@@ -85,7 +95,22 @@ export const notificationMessageService = {
     const artisanName = artisan?.fullName || "your artisan";
     const customerName = customer?.fullName || "The customer";
     const dateTime = formatAppointmentDateTime(appointment);
+    const previousStatus =
+      typeof previousAppointment === "string" ? previousAppointment : previousAppointment?.status;
+    const previousJourneyStatus =
+      typeof previousAppointment === "object" ? previousAppointment?.journeyStatus : null;
     const statusChanged = previousStatus && previousStatus !== appointment.status;
+    const artisanJustArrived =
+      appointment.journeyStatus === "arrived" && previousJourneyStatus !== "arrived";
+
+    if (artisanJustArrived) {
+      await notifyUser(customer, {
+        subject: `${artisanName} has arrived: ${appointment.title}`,
+        smsText: `${artisanName} has arrived for your service "${appointment.title}". Please meet them at the service location.`,
+        emailText: `${artisanName} has arrived for your service "${appointment.title}". Please meet them at the service location.`,
+        emailHtml: `<p><strong>${artisanName} has arrived</strong> for your service <strong>${appointment.title}</strong>.</p><p>Please meet them at the service location.</p>`,
+      });
+    }
 
     if (!statusChanged) return;
 

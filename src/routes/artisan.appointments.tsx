@@ -25,6 +25,24 @@ import {
 import { Plus, Calendar as CalIcon } from "lucide-react";
 import { toast } from "sonner";
 import { LiveServiceTracker } from "@/components/appointments/LiveServiceTracker";
+import { AppointmentProgress } from "@/components/appointments/AppointmentProgress";
+import type { Database } from "@/types/database";
+import { Check, CheckCircle2, XCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { formatDateLabel, formatTimeLabel, getStatusClasses } from "@/lib/crm-helpers";
+
+type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
+type Customer = Database["public"]["Tables"]["customers"]["Row"];
 
 export const Route = createFileRoute("/artisan/appointments")({
   component: () => (
@@ -38,8 +56,9 @@ export const Route = createFileRoute("/artisan/appointments")({
 
 function AppointmentsContent() {
   const { user } = useAuth();
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [savingId, setSavingId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -59,7 +78,7 @@ function AppointmentsContent() {
         db.from("customers").select("id, name").eq("artisan_id", user.id),
       ]);
       setAppointments(serverAppointments);
-      setCustomers((custRes.data || []) as any[]);
+      setCustomers((custRes.data || []) as Customer[]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load appointments.");
     }
@@ -85,7 +104,7 @@ function AppointmentsContent() {
         description: form.description || null,
         scheduled_date: form.scheduled_date,
         scheduled_time: form.scheduled_time,
-        status: form.status as "pending" | "confirmed" | "completed" | "cancelled",
+        status: "confirmed",
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create appointment.");
@@ -104,15 +123,20 @@ function AppointmentsContent() {
     load();
   };
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (
+    appointment: Appointment,
+    status: Appointment["status"],
+    successMessage: string,
+  ) => {
+    setSavingId(appointment.id);
     try {
-      await db.updateAppointment(id, {
-        status: status as "pending" | "confirmed" | "completed" | "cancelled",
-      });
-      toast.success("Status updated");
+      await db.updateAppointment(appointment.id, { status });
+      toast.success(successMessage);
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update appointment.");
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -175,6 +199,7 @@ function AppointmentsContent() {
                     <Label>Date *</Label>
                     <Input
                       type="date"
+                      min={new Date().toISOString().slice(0, 10)}
                       value={form.scheduled_date}
                       onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })}
                       className="mt-1"
@@ -198,12 +223,12 @@ function AppointmentsContent() {
           </Dialog>
         }
       />
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {["all", "pending", "confirmed", "completed", "cancelled"].map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filter === s ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filter === s ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}
           >
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
@@ -216,36 +241,123 @@ function AppointmentsContent() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((appt) => (
-            <div
-              key={appt.id}
-              className="flex flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <h3 className="font-semibold text-card-foreground">{appt.title}</h3>
-                {appt.description && (
-                  <p className="text-sm text-muted-foreground">{appt.description}</p>
-                )}
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {appt.scheduled_date} at {appt.scheduled_time}
-                </p>
+          {filtered.map((appt) => {
+            const isSaving = savingId === appt.id;
+            const canComplete = !appt.customer_user_id || appt.journey_status === "arrived";
+            return (
+              <div
+                key={appt.id}
+                className="flex flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-card-foreground">{appt.title}</h3>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(appt.status)}`}
+                    >
+                      {appt.status}
+                    </span>
+                  </div>
+                  {appt.description && (
+                    <p className="text-sm text-muted-foreground">{appt.description}</p>
+                  )}
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {formatDateLabel(appt.scheduled_date)} at {formatTimeLabel(appt.scheduled_time)}
+                  </p>
+                  <AppointmentProgress appointment={appt} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {appt.status === "pending" && (
+                    <Button
+                      size="sm"
+                      disabled={isSaving}
+                      onClick={() =>
+                        void updateStatus(
+                          appt,
+                          "confirmed",
+                          "Appointment accepted — customer notified",
+                        )
+                      }
+                    >
+                      <Check className="mr-2 h-4 w-4" /> Accept
+                    </Button>
+                  )}
+                  {appt.status === "confirmed" && (
+                    <LiveServiceTracker
+                      appointment={appt}
+                      role="artisan"
+                      onAppointmentChange={load}
+                    />
+                  )}
+                  {appt.status === "confirmed" && (
+                    <Button
+                      size="sm"
+                      disabled={isSaving || !canComplete}
+                      title={canComplete ? "Complete service" : "Confirm arrival first"}
+                      onClick={() =>
+                        void updateStatus(
+                          appt,
+                          "completed",
+                          "Service completed — customer can now leave feedback",
+                        )
+                      }
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Complete
+                    </Button>
+                  )}
+                  {(appt.status === "pending" || appt.status === "confirmed") && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          disabled={isSaving}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />{" "}
+                          {appt.status === "pending" ? "Decline" : "Cancel"}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {appt.status === "pending"
+                              ? "Decline this request?"
+                              : "Cancel this appointment?"}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            The customer will be notified immediately. This action cannot be
+                            reversed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Keep appointment</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() =>
+                              void updateStatus(
+                                appt,
+                                "cancelled",
+                                appt.status === "pending"
+                                  ? "Request declined"
+                                  : "Appointment cancelled",
+                              )
+                            }
+                          >
+                            Confirm
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  {appt.status === "confirmed" && !canComplete && (
+                    <p className="w-full text-right text-xs text-muted-foreground">
+                      Confirm arrival before completing.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <LiveServiceTracker appointment={appt} role="artisan" />
-                <Select value={appt.status} onValueChange={(v) => updateStatus(appt.id, v)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

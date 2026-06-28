@@ -12,7 +12,7 @@ import {
   getAvailableTimeSuggestions,
   getStatusClasses,
 } from "@/lib/crm-helpers";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,12 +32,24 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Sparkles, XCircle, Clock3 } from "lucide-react";
+import { Plus, Calendar, Sparkles, XCircle, Clock3, RotateCcw, Star } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/types/database";
 import { LiveServiceTracker } from "@/components/appointments/LiveServiceTracker";
 import { ServiceLifecycleStrip } from "@/components/customer/ServiceLifecycleStrip";
 import { CustomerEmptyState } from "@/components/customer/CustomerEmptyState";
+import { AppointmentProgress } from "@/components/appointments/AppointmentProgress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -76,6 +88,8 @@ function CustAppointmentsContent() {
     scheduled_time: "",
   });
   const [filter, setFilter] = useState<"all" | "upcoming" | "completed" | "cancelled">("all");
+  const journeyStatusesRef = useRef<Map<string, Appointment["journey_status"]>>(new Map());
+  const hasLoadedJourneyStatusesRef = useRef(false);
 
   const load = async () => {
     if (!user) return;
@@ -128,6 +142,26 @@ function CustAppointmentsContent() {
           console.error("Could not migrate a local appointment:", error);
         }
       }
+
+      const previousJourneyStatuses = journeyStatusesRef.current;
+      if (hasLoadedJourneyStatusesRef.current) {
+        for (const appointment of mergedAppointments) {
+          if (
+            appointment.journey_status === "arrived" &&
+            previousJourneyStatuses.get(appointment.id) !== "arrived"
+          ) {
+            const artisan = serverArtisans.find((item) => item.id === appointment.artisan_id);
+            toast.success(`${artisan?.full_name || "Your artisan"} has arrived`, {
+              description: `They are at the service location for ${appointment.title}.`,
+              duration: 10_000,
+            });
+          }
+        }
+      }
+      journeyStatusesRef.current = new Map(
+        mergedAppointments.map((appointment) => [appointment.id, appointment.journey_status]),
+      );
+      hasLoadedJourneyStatusesRef.current = true;
 
       setAppointments(mergedAppointments);
       setAllAppointments(mergedAppointments);
@@ -341,6 +375,7 @@ function CustAppointmentsContent() {
                     <Label>Date *</Label>
                     <Input
                       type="date"
+                      min={new Date().toISOString().slice(0, 10)}
                       value={form.scheduled_date}
                       onChange={(event) => setForm({ ...form, scheduled_date: event.target.value })}
                       className="mt-1"
@@ -471,19 +506,55 @@ function CustAppointmentsContent() {
                     {appointment.description && (
                       <p className="mt-3 text-sm text-card-foreground">{appointment.description}</p>
                     )}
+                    <AppointmentProgress appointment={appointment} />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <LiveServiceTracker appointment={appointment} role="customer" />
                     {canCancel && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => cancelAppointment(appointment.id)}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Cancel
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <XCircle className="h-4 w-4" /> Cancel
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel this appointment?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              The artisan will be notified and the reserved time will be released.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep appointment</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => void cancelAppointment(appointment.id)}
+                            >
+                              Cancel appointment
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {appointment.status === "completed" && (
+                      <Button asChild size="sm">
+                        <Link to="/customer/feedback" search={{ appointmentId: appointment.id }}>
+                          <Star className="mr-2 h-4 w-4" /> Leave feedback
+                        </Link>
+                      </Button>
+                    )}
+                    {(appointment.status === "completed" || appointment.status === "cancelled") && (
+                      <Button asChild variant="outline" size="sm">
+                        <Link
+                          to="/customer/appointments"
+                          search={{
+                            artisanId: appointment.artisan_id,
+                            title: appointment.title,
+                            description: appointment.description || undefined,
+                          }}
+                        >
+                          <RotateCcw className="mr-2 h-4 w-4" /> Book again
+                        </Link>
                       </Button>
                     )}
                   </div>
