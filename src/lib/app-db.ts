@@ -84,6 +84,15 @@ function normalizeProfiles(rows: TableRow<"profiles">[]): TableRow<"profiles">[]
   }));
 }
 
+function normalizeAppointments(rows: TableRow<"appointments">[]): TableRow<"appointments">[] {
+  return rows.map((row) => ({
+    ...row,
+    journey_status: row.journey_status ?? "not_started",
+    artisan_location_sharing: row.artisan_location_sharing ?? false,
+    customer_location_sharing: row.customer_location_sharing ?? false,
+  }));
+}
+
 function normalizeAuthUsers(
   rows: Partial<StoredAuthUser>[],
   profiles: TableRow<"profiles">[],
@@ -127,7 +136,7 @@ function normalizeState(state: Partial<AppState>): AppState {
         ? state.tables.service_records
         : seed.tables.service_records,
       appointments: Array.isArray(state.tables?.appointments)
-        ? state.tables.appointments
+        ? normalizeAppointments(state.tables.appointments)
         : seed.tables.appointments,
       feedback: Array.isArray(state.tables?.feedback)
         ? state.tables.feedback
@@ -136,7 +145,9 @@ function normalizeState(state: Partial<AppState>): AppState {
       work_requests: Array.isArray(state.tables?.work_requests)
         ? state.tables.work_requests
         : seed.tables.work_requests,
-      payments: Array.isArray(state.tables?.payments) ? state.tables.payments : seed.tables.payments,
+      payments: Array.isArray(state.tables?.payments)
+        ? state.tables.payments
+        : seed.tables.payments,
     },
   };
 
@@ -294,8 +305,23 @@ interface BackendAppointment {
   scheduledDate: string;
   scheduledTime: string;
   status: TableRow<"appointments">["status"];
+  journeyStatus: TableRow<"appointments">["journey_status"];
+  artisanLocationSharing: boolean;
+  customerLocationSharing: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TrackingParty {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  avatarUrl: string | null;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationAt: string | null;
+  sharing: boolean;
 }
 
 function toFiniteNumber(value: unknown): number | null {
@@ -369,6 +395,9 @@ function backendAppointmentToRow(appointment: BackendAppointment): TableRow<"app
     scheduled_date: appointment.scheduledDate,
     scheduled_time: appointment.scheduledTime,
     status: appointment.status,
+    journey_status: appointment.journeyStatus ?? "not_started",
+    artisan_location_sharing: Boolean(appointment.artisanLocationSharing),
+    customer_location_sharing: Boolean(appointment.customerLocationSharing),
     created_at: appointment.createdAt,
     updated_at: appointment.updatedAt,
   });
@@ -398,7 +427,9 @@ function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
       role: auth.user.role,
     };
 
-    const existingUserIndex = state.authUsers.findIndex((candidate) => candidate.id === storedUser.id);
+    const existingUserIndex = state.authUsers.findIndex(
+      (candidate) => candidate.id === storedUser.id,
+    );
     if (existingUserIndex >= 0) {
       state.authUsers[existingUserIndex] = storedUser;
     } else {
@@ -406,14 +437,18 @@ function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
     }
 
     const profile = backendUserToProfile(auth.user);
-    const profileIndex = state.tables.profiles.findIndex((candidate) => candidate.id === auth.user.id);
+    const profileIndex = state.tables.profiles.findIndex(
+      (candidate) => candidate.id === auth.user.id,
+    );
     if (profileIndex >= 0) {
       state.tables.profiles[profileIndex] = profile;
     } else {
       state.tables.profiles.push(profile);
     }
 
-    const roleIndex = state.tables.user_roles.findIndex((candidate) => candidate.user_id === auth.user.id);
+    const roleIndex = state.tables.user_roles.findIndex(
+      (candidate) => candidate.user_id === auth.user.id,
+    );
     if (roleIndex >= 0) {
       state.tables.user_roles[roleIndex] = {
         ...state.tables.user_roles[roleIndex],
@@ -672,6 +707,9 @@ function createSeedState(): AppState {
           scheduled_date: "2026-04-18",
           scheduled_time: "10:00",
           status: "confirmed",
+          journey_status: "not_started",
+          artisan_location_sharing: false,
+          customer_location_sharing: false,
           created_at: createdAt,
           updated_at: createdAt,
         },
@@ -812,6 +850,12 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         scheduled_date: input.scheduled_date as string,
         scheduled_time: input.scheduled_time as string,
         status: (input.status as TableRow<"appointments">["status"] | undefined) ?? "pending",
+        journey_status:
+          (input.journey_status as TableRow<"appointments">["journey_status"] | undefined) ??
+          "not_started",
+        artisan_location_sharing: (input.artisan_location_sharing as boolean | undefined) ?? false,
+        customer_location_sharing:
+          (input.customer_location_sharing as boolean | undefined) ?? false,
         created_at: (input.created_at as string | undefined) ?? timestamp,
         updated_at: (input.updated_at as string | undefined) ?? timestamp,
       } as TableRow<T>;
@@ -1118,7 +1162,12 @@ export const db = {
           bio: options?.data?.bio,
         });
         syncBackendUser(auth, "SIGNED_UP");
-        return { data: { user: createAuthUser(readState().authUsers.find((user) => user.id === auth.user.id)!) }, error: null };
+        return {
+          data: {
+            user: createAuthUser(readState().authUsers.find((user) => user.id === auth.user.id)!),
+          },
+          error: null,
+        };
       } catch (error) {
         return { data: { user: null }, error: error as Error };
       }
@@ -1173,10 +1222,12 @@ export const db = {
 
         const roleIndex = state.tables.user_roles.findIndex((row) => row.user_id === profile.id);
         if (roleIndex < 0) {
-          state.tables.user_roles.push(buildInsertedRow("user_roles", {
-            user_id: profile.id,
-            role: "artisan",
-          }));
+          state.tables.user_roles.push(
+            buildInsertedRow("user_roles", {
+              user_id: profile.id,
+              role: "artisan",
+            }),
+          );
         }
       });
     });
@@ -1194,16 +1245,28 @@ export const db = {
       }),
     });
 
-    await db.from("profiles").update({
-      last_latitude: user.lastLatitude,
-      last_longitude: user.lastLongitude,
-      last_location_at: user.lastLocationAt,
-    }).eq("id", user.id);
+    await db
+      .from("profiles")
+      .update({
+        last_latitude: user.lastLatitude,
+        last_longitude: user.lastLongitude,
+        last_location_at: user.lastLocationAt,
+      })
+      .eq("id", user.id);
   },
 
   async getMyAppointments() {
     const appointments = await authenticatedApi<BackendAppointment[]>("/appointments");
     return cacheAppointments(appointments);
+  },
+
+  async getAppointmentTracking(id: string) {
+    return authenticatedApi<{
+      appointmentId: string;
+      journeyStatus: "not_started" | "en_route" | "arrived";
+      artisan: TrackingParty;
+      customer: TrackingParty | null;
+    }>(`/appointments/${id}/tracking`);
   },
 
   async createAppointment(payload: {
@@ -1232,13 +1295,19 @@ export const db = {
     return cacheAppointments([appointment])[0];
   },
 
-  async updateAppointment(id: string, payload: {
-    status?: TableRow<"appointments">["status"];
-    title?: string;
-    description?: string | null;
-    scheduled_date?: string;
-    scheduled_time?: string;
-  }) {
+  async updateAppointment(
+    id: string,
+    payload: {
+      status?: TableRow<"appointments">["status"];
+      title?: string;
+      description?: string | null;
+      scheduled_date?: string;
+      scheduled_time?: string;
+      journey_status?: "not_started" | "en_route" | "arrived";
+      artisan_location_sharing?: boolean;
+      customer_location_sharing?: boolean;
+    },
+  ) {
     const appointment = await authenticatedApi<BackendAppointment>(`/appointments/${id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -1247,6 +1316,9 @@ export const db = {
         description: payload.description,
         scheduledDate: payload.scheduled_date,
         scheduledTime: payload.scheduled_time,
+        journeyStatus: payload.journey_status,
+        artisanLocationSharing: payload.artisan_location_sharing,
+        customerLocationSharing: payload.customer_location_sharing,
       }),
     });
     return cacheAppointments([appointment])[0];

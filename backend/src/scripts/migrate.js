@@ -110,6 +110,12 @@ async function migrationAlreadyPresent(connection, filename) {
         (await columnExists(connection, "users", "last_longitude")) &&
         (await columnExists(connection, "users", "last_location_at"))
       );
+    case "006_add_appointment_live_tracking.sql":
+      return (
+        (await columnExists(connection, "appointments", "journey_status")) &&
+        (await columnExists(connection, "appointments", "artisan_location_sharing")) &&
+        (await columnExists(connection, "appointments", "customer_location_sharing"))
+      );
     default:
       return false;
   }
@@ -120,7 +126,14 @@ async function maybeBaselineInitialMigration(connection, filename, applied) {
     return;
   }
 
-  const requiredTables = ["users", "service_categories", "customers", "service_records", "appointments", "feedback"];
+  const requiredTables = [
+    "users",
+    "service_categories",
+    "customers",
+    "service_records",
+    "appointments",
+    "feedback",
+  ];
   const existing = await Promise.all(requiredTables.map((table) => tableExists(connection, table)));
 
   if (existing.every(Boolean)) {

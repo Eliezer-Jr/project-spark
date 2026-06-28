@@ -11,6 +11,9 @@ function mapAppointmentFields(payload = {}) {
     scheduled_date: payload.scheduledDate,
     scheduled_time: payload.scheduledTime,
     status: payload.status,
+    journey_status: payload.journeyStatus,
+    artisan_location_sharing: payload.artisanLocationSharing,
+    customer_location_sharing: payload.customerLocationSharing,
   }).filter(([, value]) => value !== undefined);
 
   return {
@@ -33,6 +36,9 @@ export const appointmentModel = {
         DATE_FORMAT(scheduled_date, '%Y-%m-%d') AS scheduledDate,
         TIME_FORMAT(scheduled_time, '%H:%i:%s') AS scheduledTime,
         status,
+        journey_status AS journeyStatus,
+        artisan_location_sharing AS artisanLocationSharing,
+        customer_location_sharing AS customerLocationSharing,
         created_at AS createdAt,
         updated_at AS updatedAt
       FROM appointments
@@ -53,6 +59,9 @@ export const appointmentModel = {
           DATE_FORMAT(scheduled_date, '%Y-%m-%d') AS scheduledDate,
           TIME_FORMAT(scheduled_time, '%H:%i:%s') AS scheduledTime,
           status,
+          journey_status AS journeyStatus,
+          artisan_location_sharing AS artisanLocationSharing,
+          customer_location_sharing AS customerLocationSharing,
           created_at AS createdAt,
           updated_at AS updatedAt
         FROM appointments

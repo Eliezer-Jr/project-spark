@@ -2,6 +2,7 @@ import { HTTP_STATUS } from "../constants/http-status.js";
 import {
   APP_ROLES,
   APPOINTMENT_STATUSES,
+  JOURNEY_STATUSES,
   SERVICE_RECORD_STATUSES,
 } from "../constraints/app.constraints.js";
 import { AppError } from "../exceptions/AppError.js";
@@ -197,6 +198,14 @@ export function validateAppointment(req, _res, next) {
     if (isProvided(req.body.status)) {
       ensureEnum(req.body.status, APPOINTMENT_STATUSES, "Invalid appointment status.");
     }
+    if (isProvided(req.body.journeyStatus)) {
+      ensureEnum(req.body.journeyStatus, JOURNEY_STATUSES, "Invalid journey status.");
+    }
+    for (const field of ["artisanLocationSharing", "customerLocationSharing"]) {
+      if (isProvided(req.body[field])) {
+        ensure(typeof req.body[field] === "boolean", `${field} must be a boolean value.`);
+      }
+    }
     next();
   } catch (error) {
     next(error);
@@ -219,6 +228,14 @@ export function validateAppointmentPatch(req, _res, next) {
     }
     if (isProvided(req.body.status)) {
       ensureEnum(req.body.status, APPOINTMENT_STATUSES, "Invalid appointment status.");
+    }
+    if (isProvided(req.body.journeyStatus)) {
+      ensureEnum(req.body.journeyStatus, JOURNEY_STATUSES, "Invalid journey status.");
+    }
+    for (const field of ["artisanLocationSharing", "customerLocationSharing"]) {
+      if (isProvided(req.body[field])) {
+        ensure(typeof req.body[field] === "boolean", `${field} must be a boolean value.`);
+      }
     }
     next();
   } catch (error) {

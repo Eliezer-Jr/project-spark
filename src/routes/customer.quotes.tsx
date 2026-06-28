@@ -1,36 +1,61 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
-import { formatCurrency, formatDateLabel, formatStatusLabel, getStatusClasses } from "@/lib/crm-helpers";
+import {
+  formatCurrency,
+  formatDateLabel,
+  formatStatusLabel,
+  getStatusClasses,
+} from "@/lib/crm-helpers";
 import { startQuotePayment, type QuotePaymentResult } from "@/lib/payments";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, CheckCircle2, PencilLine, CreditCard } from "lucide-react";
+import { CalendarPlus, FileText, CheckCircle2, PencilLine, CreditCard } from "lucide-react";
 import { toast } from "sonner";
+import { ServiceLifecycleStrip } from "@/components/customer/ServiceLifecycleStrip";
+import { CustomerEmptyState } from "@/components/customer/CustomerEmptyState";
+import type { Database } from "@/types/database";
+
+type Quote = Database["public"]["Tables"]["quotes"]["Row"];
+type Payment = Database["public"]["Tables"]["payments"]["Row"];
 
 export const Route = createFileRoute("/customer/quotes")({
   component: () => (
     <ProtectedRoute allowedRoles={["customer"]}>
-      <DashboardLayout><CustomerQuotesContent /></DashboardLayout>
+      <DashboardLayout>
+        <CustomerQuotesContent />
+      </DashboardLayout>
     </ProtectedRoute>
   ),
 });
 
 function CustomerQuotesContent() {
   const { user, profile } = useAuth();
-  const [quotes, setQuotes] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedQuote, setSelectedQuote] = useState<any | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [changeRequest, setChangeRequest] = useState("");
   const [paymentPhone, setPaymentPhone] = useState(profile?.phone || "");
   const [paymentOption, setPaymentOption] = useState("MTN");
@@ -41,11 +66,19 @@ function CustomerQuotesContent() {
     if (!user) return;
 
     const [quoteRes, paymentRes] = await Promise.all([
-      db.from("quotes").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false }),
-      db.from("payments").select("*").eq("customer_user_id", user.id).order("created_at", { ascending: false }),
+      db
+        .from("quotes")
+        .select("*")
+        .eq("customer_user_id", user.id)
+        .order("created_at", { ascending: false }),
+      db
+        .from("payments")
+        .select("*")
+        .eq("customer_user_id", user.id)
+        .order("created_at", { ascending: false }),
     ]);
-    setQuotes((quoteRes.data || []) as any[]);
-    setPayments((paymentRes.data || []) as any[]);
+    setQuotes((quoteRes.data || []) as Quote[]);
+    setPayments((paymentRes.data || []) as Payment[]);
   };
 
   useEffect(() => {
@@ -57,7 +90,11 @@ function CustomerQuotesContent() {
     return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
   }, [user]);
 
-  const updateQuote = async (quoteId: string, patch: Record<string, unknown>, successMessage: string) => {
+  const updateQuote = async (
+    quoteId: string,
+    patch: Record<string, unknown>,
+    successMessage: string,
+  ) => {
     const { error } = await db.from("quotes").update(patch).eq("id", quoteId);
     if (error) {
       toast.error(error.message);
@@ -119,13 +156,24 @@ function CustomerQuotesContent() {
 
   return (
     <>
-      <PageHeader title="My Quotes" description="Approve estimates, request changes, or pay approved quotes" />
+      <PageHeader
+        title="My Quotes"
+        description="Approve estimates, request changes, or pay approved quotes"
+      />
+
+      <ServiceLifecycleStrip active="quote" />
 
       {quotes.length === 0 ? (
-        <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
-          <FileText className="mx-auto mb-3 h-10 w-10 opacity-50" />
-          <p>No quotes have been sent to you yet</p>
-        </div>
+        <CustomerEmptyState
+          icon={FileText}
+          title="No quotes have been sent yet"
+          description="Start with a service request so an artisan can review the work and send an estimate."
+          action={
+            <Button asChild variant="outline">
+              <Link to="/customer/requests">Create service request</Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-4">
           {quotes.map((quote) => {
@@ -137,24 +185,35 @@ function CustomerQuotesContent() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-card-foreground">{quote.title}</h3>
-                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(quote.status)}`}>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(quote.status)}`}
+                      >
                         {formatStatusLabel(quote.status)}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Total: {formatCurrency(quote.amount)}
-                      {quote.deposit_amount ? ` - Deposit: ${formatCurrency(quote.deposit_amount)}` : ""}
-                      {quote.valid_until ? ` - Valid until ${formatDateLabel(quote.valid_until)}` : ""}
+                      {quote.deposit_amount
+                        ? ` - Deposit: ${formatCurrency(quote.deposit_amount)}`
+                        : ""}
+                      {quote.valid_until
+                        ? ` - Valid until ${formatDateLabel(quote.valid_until)}`
+                        : ""}
                     </p>
                     {quotePayments.length > 0 && (
                       <p className="mt-2 text-sm text-muted-foreground">
                         Payment:{" "}
                         {quotePayments
-                          .map((payment) => `${formatCurrency(payment.amount)} ${formatStatusLabel(payment.status)}`)
+                          .map(
+                            (payment) =>
+                              `${formatCurrency(payment.amount)} ${formatStatusLabel(payment.status)}`,
+                          )
                           .join(", ")}
                       </p>
                     )}
-                    {quote.description && <p className="mt-3 text-sm text-card-foreground">{quote.description}</p>}
+                    {quote.description && (
+                      <p className="mt-3 text-sm text-card-foreground">{quote.description}</p>
+                    )}
                     {quote.requested_changes && (
                       <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-warning">
                         Requested changes: {quote.requested_changes}
@@ -162,9 +221,19 @@ function CustomerQuotesContent() {
                     )}
                   </div>
 
-                  {(quote.status === "awaiting_response" || quote.status === "changes_requested") && (
+                  {(quote.status === "awaiting_response" ||
+                    quote.status === "changes_requested") && (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={() => updateQuote(quote.id, { status: "approved", requested_changes: null }, "Quote approved")}>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          updateQuote(
+                            quote.id,
+                            { status: "approved", requested_changes: null },
+                            "Quote approved",
+                          )
+                        }
+                      >
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                         Approve
                       </Button>
@@ -179,19 +248,32 @@ function CustomerQuotesContent() {
                         }}
                       >
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedQuote(quote)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedQuote(quote)}
+                          >
                             <PencilLine className="mr-2 h-4 w-4" />
                             Request Changes
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
-                          <DialogHeader><DialogTitle>Request Quote Changes</DialogTitle></DialogHeader>
+                          <DialogHeader>
+                            <DialogTitle>Request Quote Changes</DialogTitle>
+                          </DialogHeader>
                           <div className="space-y-3 mt-2">
                             <div>
                               <Label>What should change?</Label>
-                              <Textarea value={changeRequest} onChange={(event) => setChangeRequest(event.target.value)} className="mt-1 min-h-24" placeholder="Describe pricing, scope, or timeline changes you want." />
+                              <Textarea
+                                value={changeRequest}
+                                onChange={(event) => setChangeRequest(event.target.value)}
+                                className="mt-1 min-h-24"
+                                placeholder="Describe pricing, scope, or timeline changes you want."
+                              />
                             </div>
-                            <Button onClick={submitChangeRequest} className="w-full">Send Request</Button>
+                            <Button onClick={submitChangeRequest} className="w-full">
+                              Send Request
+                            </Button>
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -221,7 +303,9 @@ function CustomerQuotesContent() {
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
-                        <DialogHeader><DialogTitle>Pay Quote</DialogTitle></DialogHeader>
+                        <DialogHeader>
+                          <DialogTitle>Pay Quote</DialogTitle>
+                        </DialogHeader>
                         {paymentResult ? (
                           <div className="mt-2 space-y-4">
                             <div className="rounded-lg border bg-muted/30 p-4 text-sm">
@@ -243,55 +327,82 @@ function CustomerQuotesContent() {
                             {paymentResult.checkoutUrl ? (
                               <Button
                                 variant="outline"
-                                onClick={() => window.open(paymentResult.checkoutUrl!, "_blank", "noopener,noreferrer")}
+                                onClick={() =>
+                                  window.open(
+                                    paymentResult.checkoutUrl!,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )
+                                }
                                 className="w-full"
                               >
                                 Reopen Checkout
                               </Button>
                             ) : null}
-                            <Button onClick={() => setPaymentDialogOpen(false)} className="w-full">Done</Button>
+                            <Button onClick={() => setPaymentDialogOpen(false)} className="w-full">
+                              Done
+                            </Button>
                           </div>
                         ) : (
                           <div className="mt-2 space-y-3">
-                          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                            <p className="font-medium text-card-foreground">{quote.title}</p>
-                            <p className="mt-1 text-muted-foreground">
-                              Amount due: {formatCurrency(quote.deposit_amount || quote.amount)}
-                            </p>
+                            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                              <p className="font-medium text-card-foreground">{quote.title}</p>
+                              <p className="mt-1 text-muted-foreground">
+                                Amount due: {formatCurrency(quote.deposit_amount || quote.amount)}
+                              </p>
+                            </div>
+                            <div>
+                              <Label>Mobile money number</Label>
+                              <Input
+                                value={paymentPhone}
+                                onChange={(event) =>
+                                  setPaymentPhone(event.target.value.replace(/\D/g, ""))
+                                }
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className="mt-1"
+                                placeholder="+233..."
+                              />
+                            </div>
+                            <div>
+                              <Label>Mobile money network</Label>
+                              <Select value={paymentOption} onValueChange={setPaymentOption}>
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MTN">MTN</SelectItem>
+                                  <SelectItem value="VODAFONE">Vodafone</SelectItem>
+                                  <SelectItem value="AIRTELTIGO">AirtelTigo</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              onClick={startPayment}
+                              disabled={isPaying || !paymentPhone.trim()}
+                              className="w-full"
+                            >
+                              {isPaying ? "Starting Payment..." : "Pay with Redde"}
+                            </Button>
                           </div>
-                          <div>
-                            <Label>Mobile money number</Label>
-                            <Input
-                              value={paymentPhone}
-                              onChange={(event) =>
-                                setPaymentPhone(event.target.value.replace(/\D/g, ""))
-                              }
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className="mt-1"
-                              placeholder="+233..."
-                          />
-                        </div>
-                        <div>
-                          <Label>Mobile money network</Label>
-                          <Select value={paymentOption} onValueChange={setPaymentOption}>
-                            <SelectTrigger className="mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="MTN">MTN</SelectItem>
-                              <SelectItem value="VODAFONE">Vodafone</SelectItem>
-                              <SelectItem value="AIRTELTIGO">AirtelTigo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                          <Button onClick={startPayment} disabled={isPaying || !paymentPhone.trim()} className="w-full">
-                            {isPaying ? "Starting Payment..." : "Pay with Redde"}
-                          </Button>
-                        </div>
                         )}
                       </DialogContent>
                     </Dialog>
+                  )}
+
+                  {(quote.status === "approved" || quote.status === "converted") && (
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        to="/customer/appointments"
+                        search={{
+                          artisanId: quote.artisan_id,
+                          title: quote.title,
+                          description: quote.description || undefined,
+                        }}
+                      >
+                        <CalendarPlus className="mr-2 h-4 w-4" /> Book service
+                      </Link>
+                    </Button>
                   )}
                 </div>
               </div>

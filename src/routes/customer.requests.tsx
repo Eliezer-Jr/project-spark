@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -25,12 +25,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Inbox, Plus } from "lucide-react";
+import { CalendarPlus, Inbox, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/types/database";
+import { ServiceLifecycleStrip } from "@/components/customer/ServiceLifecycleStrip";
+import { CustomerEmptyState } from "@/components/customer/CustomerEmptyState";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-type UserRole = Database["public"]["Tables"]["user_roles"]["Row"];
 type WorkRequest = Database["public"]["Tables"]["work_requests"]["Row"];
 
 export const Route = createFileRoute("/customer/requests")({
@@ -48,6 +60,7 @@ function CustomerRequestsContent() {
   const [requests, setRequests] = useState<WorkRequest[]>([]);
   const [artisans, setArtisans] = useState<Profile[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | WorkRequest["status"]>("all");
   const [form, setForm] = useState({
     artisan_id: "",
     title: "",
@@ -58,22 +71,18 @@ function CustomerRequestsContent() {
   const load = async () => {
     if (!user) return;
 
-    const [requestRes, roleRes] = await Promise.all([
+    const [requestRes, availableArtisans] = await Promise.all([
       db
         .from("work_requests")
         .select("*")
         .eq("customer_user_id", user.id)
         .order("created_at", { ascending: false }),
-      db.from("user_roles").select("user_id").eq("role", "artisan"),
+      db.getAvailableArtisans(),
     ]);
 
     setRequests((requestRes.data || []) as WorkRequest[]);
 
-    const artisanIds = ((roleRes.data || []) as UserRole[]).map((item) => item.user_id);
-    if (artisanIds.length) {
-      const { data } = await db.from("profiles").select("*").in("id", artisanIds);
-      setArtisans((data || []) as Profile[]);
-    }
+    setArtisans(availableArtisans);
   };
 
   useEffect(() => {
@@ -105,6 +114,16 @@ function CustomerRequestsContent() {
     setForm({ artisan_id: "", title: "", description: "", preferred_date: "" });
     await load();
   };
+
+  const withdrawRequest = async (id: string) => {
+    const { error } = await db.from("work_requests").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Request withdrawn");
+    await load();
+  };
+
+  const filteredRequests =
+    filter === "all" ? requests : requests.filter((request) => request.status === filter);
 
   return (
     <>
@@ -175,19 +194,39 @@ function CustomerRequestsContent() {
         }
       />
 
-      {requests.length === 0 ? (
-        <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
-          <Inbox className="mx-auto mb-3 h-10 w-10 opacity-50" />
-          <p>No service requests yet</p>
-        </div>
+      <ServiceLifecycleStrip active="request" />
+
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        {(["all", "new", "reviewing", "scheduled", "closed"] as const).map((status) => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filter === status ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+          >
+            {status === "all" ? "All" : formatStatusLabel(status)}
+          </button>
+        ))}
+      </div>
+
+      {filteredRequests.length === 0 ? (
+        <CustomerEmptyState
+          icon={Inbox}
+          title={requests.length ? "No requests match this filter" : "No service requests yet"}
+          description="Describe the work once and let an artisan respond with next steps."
+          action={
+            !requests.length ? (
+              <Button onClick={() => setDialogOpen(true)}>Create request</Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="space-y-4">
-          {requests.map((request) => {
+          {filteredRequests.map((request) => {
             const artisan = artisans.find((item) => item.id === request.artisan_id);
 
             return (
               <div key={request.id} className="rounded-xl border bg-card p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-card-foreground">{request.title}</h3>
@@ -220,9 +259,50 @@ function CustomerRequestsContent() {
                     )}
                     <p className="mt-3 text-sm text-card-foreground">{request.description}</p>
                     {request.response_note && (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        Response: {request.response_note}
-                      </p>
+                      <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+                        <p className="font-medium text-primary">Artisan response</p>
+                        <p className="mt-1 text-muted-foreground">{request.response_note}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {request.artisan_id && request.status !== "closed" && (
+                      <Button asChild size="sm">
+                        <Link
+                          to="/customer/appointments"
+                          search={{
+                            artisanId: request.artisan_id,
+                            title: request.title,
+                            description: request.description,
+                            date: request.preferred_date || undefined,
+                          }}
+                        >
+                          <CalendarPlus className="mr-2 h-4 w-4" /> Book visit
+                        </Link>
+                      </Button>
+                    )}
+                    {request.status === "new" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Withdraw
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Withdraw this request?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This removes it before an artisan starts reviewing it.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep request</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => void withdrawRequest(request.id)}>
+                              Withdraw
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>

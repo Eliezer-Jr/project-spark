@@ -86,6 +86,9 @@ export const appointmentService = {
       scheduledDate: payload.scheduledDate,
       scheduledTime: payload.scheduledTime,
       status,
+      journeyStatus: "not_started",
+      artisanLocationSharing: false,
+      customerLocationSharing: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -125,14 +128,23 @@ export const appointmentService = {
 
     const scheduledDate = payload.scheduledDate || existing.scheduledDate;
     const scheduledTime = payload.scheduledTime || existing.scheduledTime;
+    const scheduleChanged =
+      artisanId !== existing.artisanId ||
+      scheduledDate !== existing.scheduledDate ||
+      scheduledTime !== existing.scheduledTime;
 
-    await domainService.ensureAppointmentSlotAvailable({
-      artisanId,
-      scheduledDate,
-      scheduledTime,
-      excludeAppointmentId: id,
-    });
+    // Tracking consent, arrival updates, and status changes do not reserve a new slot.
+    // Only re-check availability when the appointment is actually being rescheduled.
+    if (scheduleChanged) {
+      await domainService.ensureAppointmentSlotAvailable({
+        artisanId,
+        scheduledDate,
+        scheduledTime,
+        excludeAppointmentId: id,
+      });
+    }
 
+    const isFinalStatus = nextStatus === "completed" || nextStatus === "cancelled";
     const updated = await appointmentModel.updateById(id, {
       ...payload,
       artisanId,
@@ -140,6 +152,7 @@ export const appointmentService = {
       customerUserId,
       categoryId,
       status: nextStatus,
+      ...(isFinalStatus ? { artisanLocationSharing: false, customerLocationSharing: false } : {}),
       title: payload.title?.trim() || payload.title,
       description:
         typeof payload.description === "string"

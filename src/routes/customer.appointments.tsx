@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -35,12 +35,18 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Sparkles, XCircle, Clock3 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/types/database";
+import { LiveServiceTracker } from "@/components/appointments/LiveServiceTracker";
+import { ServiceLifecycleStrip } from "@/components/customer/ServiceLifecycleStrip";
+import { CustomerEmptyState } from "@/components/customer/CustomerEmptyState";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 const appointmentSearchSchema = z.object({
   artisanId: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  date: z.string().optional(),
 });
 
 export const Route = createFileRoute("/customer/appointments")({
@@ -144,9 +150,15 @@ function CustAppointmentsContent() {
   useEffect(() => {
     if (!search.artisanId) return;
 
-    setForm((current) => ({ ...current, artisan_id: search.artisanId ?? "" }));
+    setForm((current) => ({
+      ...current,
+      artisan_id: search.artisanId ?? "",
+      title: search.title ?? current.title,
+      description: search.description ?? current.description,
+      scheduled_date: search.date ?? current.scheduled_date,
+    }));
     setDialogOpen(true);
-  }, [search.artisanId]);
+  }, [search.artisanId, search.date, search.description, search.title]);
 
   const selectedArtisan = artisans.find((artisan) => artisan.id === form.artisan_id) ?? null;
 
@@ -389,6 +401,8 @@ function CustAppointmentsContent() {
         }
       />
 
+      <ServiceLifecycleStrip active="appointment" />
+
       <div className="mb-4 flex flex-wrap gap-2">
         {[
           { key: "all", label: "All" },
@@ -407,10 +421,16 @@ function CustAppointmentsContent() {
       </div>
 
       {filteredAppointments.length === 0 ? (
-        <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
-          <Calendar className="mx-auto h-10 w-10 mb-3 opacity-50" />
-          <p>No appointments in this view yet</p>
-        </div>
+        <CustomerEmptyState
+          icon={Calendar}
+          title="No appointments in this view"
+          description="Browse verified artisans or turn an approved quote into a scheduled visit."
+          action={
+            <Button asChild variant="outline">
+              <Link to="/customer/browse">Browse artisans</Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {filteredAppointments.map((appointment) => {
@@ -453,17 +473,20 @@ function CustAppointmentsContent() {
                     )}
                   </div>
 
-                  {canCancel && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => cancelAppointment(appointment.id)}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Cancel
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <LiveServiceTracker appointment={appointment} role="customer" />
+                    {canCancel && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => cancelAppointment(appointment.id)}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

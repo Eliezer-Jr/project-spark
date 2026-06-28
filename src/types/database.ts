@@ -103,6 +103,9 @@ export interface Database {
           scheduled_date: string;
           scheduled_time: string;
           status: AppointmentStatus;
+          journey_status: "not_started" | "en_route" | "arrived";
+          artisan_location_sharing: boolean;
+          customer_location_sharing: boolean;
           created_at: string;
           updated_at: string;
         };

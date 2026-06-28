@@ -24,10 +24,7 @@ interface AuthContextType {
   role: AppRole | null;
   profile: Profile | null;
   loading: boolean;
-  requestOtp: (
-    phone: string,
-    purpose: "login" | "signup",
-  ) => Promise<{ error: Error | null }>;
+  requestOtp: (phone: string, purpose: "login" | "signup") => Promise<{ error: Error | null }>;
   signUp: (
     phone: string,
     otpcode: string,
@@ -93,33 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (!user || role !== "artisan" || !navigator.geolocation) return;
-
-    let lastSentAt = 0;
-    let bestAccuracy = Number.POSITIVE_INFINITY;
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const now = Date.now();
-        const accuracyImproved = position.coords.accuracy < bestAccuracy;
-        const refreshDue = now - lastSentAt >= 30_000;
-        if (!accuracyImproved && !refreshDue) return;
-
-        bestAccuracy = Math.min(bestAccuracy, position.coords.accuracy);
-        lastSentAt = now;
-        void db.updateMyLocation(
-          position.coords.latitude,
-          position.coords.longitude,
-          new Date(position.timestamp).toISOString(),
-        ).catch((error) => console.error("Could not update artisan location:", error));
-      },
-      (error) => console.error("Could not read artisan location:", error.message),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [role, user]);
 
   const requestOtp = async (phone: string, purpose: "login" | "signup") => {
     const { error } = await db.auth.requestOtp({ phone, purpose });
