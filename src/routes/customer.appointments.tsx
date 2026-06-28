@@ -250,6 +250,37 @@ function CustAppointmentsContent() {
       return;
     }
 
+    // The appointment is already safe. Related lifecycle updates are best-effort and must not
+    // make a successful booking look like it failed.
+    try {
+      const [quoteRes, requestRes] = await Promise.all([
+        db.from("quotes").select("*").eq("customer_user_id", user.id),
+        db.from("work_requests").select("*").eq("customer_user_id", user.id),
+      ]);
+      const matchingQuote = (quoteRes.data || []).find(
+        (quote) =>
+          quote.artisan_id === form.artisan_id &&
+          quote.title.trim().toLowerCase() === form.title.trim().toLowerCase() &&
+          quote.status === "approved",
+      );
+      const matchingRequest = (requestRes.data || []).find(
+        (request) =>
+          request.artisan_id === form.artisan_id &&
+          request.title.trim().toLowerCase() === form.title.trim().toLowerCase() &&
+          request.status !== "closed",
+      );
+      await Promise.all([
+        matchingQuote
+          ? db.from("quotes").update({ status: "converted" }).eq("id", matchingQuote.id)
+          : Promise.resolve(null),
+        matchingRequest
+          ? db.from("work_requests").update({ status: "scheduled" }).eq("id", matchingRequest.id)
+          : Promise.resolve(null),
+      ]);
+    } catch (error) {
+      console.error("Could not advance related service records:", error);
+    }
+
     toast.success("Appointment booked!");
     setDialogOpen(false);
     setForm({ artisan_id: "", title: "", description: "", scheduled_date: "", scheduled_time: "" });

@@ -36,9 +36,9 @@ const artisanLinks = [
 const customerLinks = [
   { to: "/customer/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/customer/browse", label: "Browse Artisans", icon: Search },
-  { to: "/customer/appointments", label: "Appointments", icon: Calendar },
-  { to: "/customer/quotes", label: "My Quotes", icon: FileText },
   { to: "/customer/requests", label: "Service Requests", icon: Inbox },
+  { to: "/customer/quotes", label: "My Quotes", icon: FileText },
+  { to: "/customer/appointments", label: "Appointments", icon: Calendar },
   { to: "/customer/history", label: "Service History", icon: ClipboardList },
   { to: "/customer/feedback", label: "My Feedback", icon: MessageSquare },
   { to: "/customer/settings", label: "Settings", icon: Settings },

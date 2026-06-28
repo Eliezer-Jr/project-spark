@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarPlus, Inbox, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarPlus, Inbox, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/types/database";
 import { ServiceLifecycleStrip } from "@/components/customer/ServiceLifecycleStrip";
@@ -266,6 +266,13 @@ function CustomerRequestsContent() {
                     )}
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
+                    {(request.status === "reviewing" || request.response_note) && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/customer/quotes">
+                          View quotes <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
                     {request.artisan_id && request.status !== "closed" && (
                       <Button asChild size="sm">
                         <Link

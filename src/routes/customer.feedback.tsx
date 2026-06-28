@@ -146,6 +146,22 @@ function CustFeedbackContent() {
       return;
     }
 
+    if (!editingFeedbackId) {
+      const requestRes = await db
+        .from("work_requests")
+        .select("*")
+        .eq("customer_user_id", user.id);
+      const matchingRequest = (requestRes.data || []).find(
+        (request) =>
+          request.artisan_id === selectedAppointment.artisan_id &&
+          request.title.trim().toLowerCase() === selectedAppointment.title.trim().toLowerCase() &&
+          request.status === "scheduled",
+      );
+      if (matchingRequest) {
+        await db.from("work_requests").update({ status: "closed" }).eq("id", matchingRequest.id);
+      }
+    }
+
     toast.success(editingFeedbackId ? "Feedback updated" : "Feedback submitted!");
     setDialogOpen(false);
     setForm({ appointment_id: "", rating: "5", comment: "" });
