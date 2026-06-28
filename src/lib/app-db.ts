@@ -298,6 +298,44 @@ async function postApi<T>(path: string, body: unknown): Promise<T> {
   return payload?.data as T;
 }
 
+async function authenticatedApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = hasWindow() ? window.localStorage.getItem(AUTH_TOKEN_KEY) : null;
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.message || "Request failed.");
+  }
+
+  return payload?.data as T;
+}
+
+function backendUserToProfile(user: BackendAuthUser): TableRow<"profiles"> {
+  return buildInsertedRow("profiles", {
+    id: user.id,
+    full_name: user.fullName,
+    phone: normalizePhone(user.phone || ""),
+    location: user.location,
+    last_latitude: user.lastLatitude,
+    last_longitude: user.lastLongitude,
+    last_location_at: user.lastLocationAt,
+    specialization: user.specialization,
+    bio: user.bio,
+    avatar_url: user.avatarUrl,
+    notify_email: user.notifyEmail,
+    notify_sms: user.notifySms,
+    is_active: user.isActive,
+    created_at: user.createdAt,
+  });
+}
+
 function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
   mutateState((state) => {
     const normalizedPhone = normalizePhone(auth.user.phone || "");
@@ -317,22 +355,7 @@ function syncBackendUser(auth: BackendAuthPayload, event: AuthChangeEvent) {
       state.authUsers.push(storedUser);
     }
 
-    const profile = buildInsertedRow("profiles", {
-      id: auth.user.id,
-      full_name: auth.user.fullName,
-      phone: normalizedPhone,
-      location: auth.user.location,
-      last_latitude: auth.user.lastLatitude,
-      last_longitude: auth.user.lastLongitude,
-      last_location_at: auth.user.lastLocationAt,
-      specialization: auth.user.specialization,
-      bio: auth.user.bio,
-      avatar_url: auth.user.avatarUrl,
-      notify_email: auth.user.notifyEmail,
-      notify_sms: auth.user.notifySms,
-      is_active: auth.user.isActive,
-      created_at: auth.user.createdAt,
-    });
+    const profile = backendUserToProfile(auth.user);
     const profileIndex = state.tables.profiles.findIndex((candidate) => candidate.id === auth.user.id);
     if (profileIndex >= 0) {
       state.tables.profiles[profileIndex] = profile;
@@ -1086,6 +1109,46 @@ export const db = {
 
   from<T extends TableName>(table: T) {
     return new TableClient(table);
+  },
+
+  async getAvailableArtisans() {
+    const users = await authenticatedApi<BackendAuthUser[]>("/users/artisans");
+    const profiles = users.map(backendUserToProfile);
+
+    mutateState((state) => {
+      profiles.forEach((profile) => {
+        const index = state.tables.profiles.findIndex((row) => row.id === profile.id);
+        if (index >= 0) state.tables.profiles[index] = profile;
+        else state.tables.profiles.push(profile);
+
+        const roleIndex = state.tables.user_roles.findIndex((row) => row.user_id === profile.id);
+        if (roleIndex < 0) {
+          state.tables.user_roles.push(buildInsertedRow("user_roles", {
+            user_id: profile.id,
+            role: "artisan",
+          }));
+        }
+      });
+    });
+
+    return profiles;
+  },
+
+  async updateMyLocation(latitude: number, longitude: number, capturedAt: string) {
+    const user = await authenticatedApi<BackendAuthUser>("/users/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify({
+        lastLatitude: latitude,
+        lastLongitude: longitude,
+        lastLocationAt: capturedAt,
+      }),
+    });
+
+    await db.from("profiles").update({
+      last_latitude: user.lastLatitude,
+      last_longitude: user.lastLongitude,
+      last_location_at: user.lastLocationAt,
+    }).eq("id", user.id);
   },
 
   onTableChange(table: TableName, callback: () => void) {

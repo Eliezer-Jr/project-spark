@@ -31,6 +31,11 @@ export async function getCurrentUser(req, res) {
   return sendResponse(res, HTTP_STATUS.OK, "Current user fetched successfully.", user);
 }
 
+export async function getArtisans(_req, res) {
+  const artisans = await userService.getAllUsers({ role: "artisan", isActive: true });
+  return sendResponse(res, HTTP_STATUS.OK, "Artisans fetched successfully.", artisans);
+}
+
 export async function updateUserStatus(req, res) {
   const user = await userService.updateUserStatus(req.params.id, toBoolean(req.body.isActive));
   return sendResponse(res, HTTP_STATUS.OK, "User status updated successfully.", user);

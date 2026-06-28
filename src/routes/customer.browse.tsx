@@ -199,6 +199,7 @@ function BrowseContent() {
   const [catFilter, setCatFilter] = useState("all");
   const [radiusKm, setRadiusKm] = useState(DEFAULT_SEARCH_RADIUS_KM);
   const [userCoordinates, setUserCoordinates] = useState<Coordinates | null>(null);
+  const [usingLiveLocation, setUsingLiveLocation] = useState(false);
   const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
   const [geocodedLocations, setGeocodedLocations] = useState<CoordinateLookup>(() =>
     readGeocodeCache(),
@@ -208,6 +209,13 @@ function BrowseContent() {
 
   useEffect(() => {
     const load = async () => {
+      let sharedArtisans: Profile[] | null = null;
+      try {
+        sharedArtisans = await db.getAvailableArtisans();
+      } catch (error) {
+        console.error("Could not refresh artisans from the server:", error);
+      }
+
       const [rolesRes, catRes, feedbackRes, serviceRes, appointmentRes] = await Promise.all([
         db.from("user_roles").select("user_id").eq("role", "artisan"),
         db.from("service_categories").select("*"),
@@ -215,14 +223,21 @@ function BrowseContent() {
         db.from("service_records").select("*"),
         db.from("appointments").select("*"),
       ]);
-      const artisanIds = ((rolesRes.data || []) as UserRole[]).map((r) => r.user_id);
+      const artisanIds = sharedArtisans?.map((artisan) => artisan.id) ??
+        ((rolesRes.data || []) as UserRole[]).map((r) => r.user_id);
       if (artisanIds.length > 0) {
-        const { data } = await db
-          .from("profiles")
-          .select("*")
-          .in("id", artisanIds)
-          .eq("is_active", true);
-        setArtisans((data || []) as Profile[]);
+        if (sharedArtisans) {
+          setArtisans(sharedArtisans);
+        } else {
+          const { data } = await db
+            .from("profiles")
+            .select("*")
+            .in("id", artisanIds)
+            .eq("is_active", true);
+          setArtisans((data || []) as Profile[]);
+        }
+      } else {
+        setArtisans([]);
       }
       setCategories((catRes.data || []) as ServiceCategory[]);
 
@@ -265,6 +280,14 @@ function BrowseContent() {
   }, [refreshToken]);
 
   useEffect(() => {
+    const interval = window.setInterval(
+      () => setRefreshToken((value) => value + 1),
+      10_000,
+    );
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     const subscriptions = [
       "profiles",
       "feedback",
@@ -280,12 +303,14 @@ function BrowseContent() {
   }, []);
 
   useEffect(() => {
+    if (usingLiveLocation) return;
+
     const savedCoordinates = resolveLocationCoordinates(profile?.location, geocodedLocations);
     if (savedCoordinates) {
       setUserCoordinates(savedCoordinates);
       setLocationStatus(`Showing artisans within ${radiusKm} km of ${profile?.location}.`);
     }
-  }, [geocodedLocations, profile?.location, radiusKm]);
+  }, [geocodedLocations, profile?.location, radiusKm, usingLiveLocation]);
 
   useEffect(() => {
     const locations = [profile?.location, ...artisans.map((artisan) => artisan.location)]
@@ -337,20 +362,43 @@ function BrowseContent() {
       return;
     }
 
-    setLocationStatus("Finding your current location...");
-    navigator.geolocation.getCurrentPosition(
+    setLocationStatus("Finding a precise current location...");
+    let bestAccuracy = Number.POSITIVE_INFINITY;
+    let watchId: number | null = null;
+    const stopWatching = () => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      window.clearTimeout(timeoutId);
+    };
+    const timeoutId = window.setTimeout(() => {
+      stopWatching();
+      if (!Number.isFinite(bestAccuracy)) {
+        setLocationStatus(
+          "Could not access your current location. Saved location is still used when available.",
+        );
+      }
+    }, 20_000);
+
+    watchId = navigator.geolocation.watchPosition(
       (position) => {
+        if (position.coords.accuracy >= bestAccuracy) return;
+        bestAccuracy = position.coords.accuracy;
+        setUsingLiveLocation(true);
         setUserCoordinates({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
-        setLocationStatus(`Showing artisans within ${radiusKm} km of your current location.`);
+        setLocationStatus(
+          `Showing artisans within ${radiusKm} km of your current location (accurate to about ${Math.round(position.coords.accuracy)} m).`,
+        );
+        if (position.coords.accuracy <= 50) stopWatching();
       },
-      () =>
+      () => {
+        stopWatching();
         setLocationStatus(
           "Could not access your current location. Saved location is still used when available.",
-        ),
-      { enableHighAccuracy: true, timeout: 10000 },
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     );
   };
 
@@ -372,7 +420,9 @@ function BrowseContent() {
       a.location?.toLowerCase().includes(search.toLowerCase());
     const matchCat =
       catFilter === "all" || a.specialization?.toLowerCase().includes(catFilter.toLowerCase());
-    const matchRadius = !userCoordinates || (a.distanceKm != null && a.distanceKm <= radiusKm);
+    const hasLiveArtisanLocation = a.last_latitude != null && a.last_longitude != null;
+    const matchRadius =
+      !userCoordinates || !hasLiveArtisanLocation || (a.distanceKm != null && a.distanceKm <= radiusKm);
     return matchSearch && matchCat && matchRadius;
   });
 

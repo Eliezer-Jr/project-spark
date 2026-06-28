@@ -4,6 +4,7 @@ import { validateProfileUpdate, validateUserStatusUpdate } from "../middleware/v
 import { asyncHandler } from "../utils/async-handler.js";
 import {
   getCurrentUser,
+  getArtisans,
   getUser,
   getUsers,
   updateCurrentUserProfile,
@@ -17,6 +18,7 @@ router.use(authenticate);
 
 router.get("/me", asyncHandler(getCurrentUser));
 router.patch("/me/profile", validateProfileUpdate, asyncHandler(updateCurrentUserProfile));
+router.get("/artisans", requireRoles("admin", "artisan", "customer"), asyncHandler(getArtisans));
 router.get("/", requireRoles("admin"), asyncHandler(getUsers));
 router.get("/:id", requireRoles("admin"), asyncHandler(getUser));
 router.patch("/:id/status", requireRoles("admin"), validateUserStatusUpdate, asyncHandler(updateUserStatus));

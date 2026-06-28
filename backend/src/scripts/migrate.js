@@ -67,6 +67,54 @@ async function tableExists(connection, tableName) {
   return rows.length > 0;
 }
 
+async function columnExists(connection, tableName, columnName) {
+  const [rows] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = ? AND table_name = ? AND column_name = ?
+      LIMIT 1
+    `,
+    [env.dbName, tableName, columnName],
+  );
+  return rows.length > 0;
+}
+
+async function indexExists(connection, tableName, indexName) {
+  const [rows] = await connection.query(
+    `
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = ? AND table_name = ? AND index_name = ?
+      LIMIT 1
+    `,
+    [env.dbName, tableName, indexName],
+  );
+  return rows.length > 0;
+}
+
+async function migrationAlreadyPresent(connection, filename) {
+  switch (filename) {
+    case "002_add_notification_preferences.sql":
+      return (
+        (await columnExists(connection, "users", "notify_email")) &&
+        (await columnExists(connection, "users", "notify_sms"))
+      );
+    case "003_make_user_phone_unique.sql":
+      return indexExists(connection, "users", "idx_users_phone_unique");
+    case "004_create_payments.sql":
+      return tableExists(connection, "payments");
+    case "005_add_user_last_location.sql":
+      return (
+        (await columnExists(connection, "users", "last_latitude")) &&
+        (await columnExists(connection, "users", "last_longitude")) &&
+        (await columnExists(connection, "users", "last_location_at"))
+      );
+    default:
+      return false;
+  }
+}
+
 async function maybeBaselineInitialMigration(connection, filename, applied) {
   if (applied.has(filename) || filename !== "001_create_core_tables.sql") {
     return;
@@ -80,6 +128,14 @@ async function maybeBaselineInitialMigration(connection, filename, applied) {
     applied.add(filename);
     console.log(`Baselined existing migration: ${filename}`);
   }
+}
+
+async function maybeBaselineExistingMigration(connection, filename, applied) {
+  if (applied.has(filename) || !(await migrationAlreadyPresent(connection, filename))) return;
+
+  await connection.query("INSERT INTO schema_migrations (filename) VALUES (?)", [filename]);
+  applied.add(filename);
+  console.log(`Baselined existing migration: ${filename}`);
 }
 
 async function applyMigration(connection, filename) {
@@ -109,6 +165,7 @@ try {
 
   for (const filename of files) {
     await maybeBaselineInitialMigration(connection, filename, applied);
+    await maybeBaselineExistingMigration(connection, filename, applied);
 
     if (!applied.has(filename)) {
       await applyMigration(connection, filename);

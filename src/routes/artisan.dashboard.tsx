@@ -84,22 +84,6 @@ function DashboardContent() {
     return () => subscriptions.forEach((subscription) => subscription.unsubscribe());
   }, []);
 
-  useEffect(() => {
-    if (!user || !navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        void db.from("profiles").update({
-          last_latitude: position.coords.latitude,
-          last_longitude: position.coords.longitude,
-          last_location_at: new Date().toISOString(),
-        }).eq("id", user.id);
-      },
-      () => undefined,
-      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 },
-    );
-  }, [user]);
-
   return (
     <>
       <PageHeader title={`Welcome, ${profile?.full_name || "Artisan"}`} description="Here's your business overview" />
