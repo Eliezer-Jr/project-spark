@@ -243,12 +243,7 @@ function SignupPage() {
               />
             </Field>
             <Field label="Email Address" showRequired={false}>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required={selectedRole === "artisan"}
-              />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </Field>
             {selectedRole === "artisan" && (
               <>
@@ -439,6 +434,24 @@ function SignupPage() {
                     required={!artisan.idCardUrl}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">Image, maximum 1 MB</p>
+                  {artisan.idCardUrl && (
+                    <div className="mt-3 rounded-lg border p-2">
+                      <img
+                        src={artisan.idCardUrl}
+                        alt="Selected ID card"
+                        className="h-32 w-full rounded-md object-contain"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 w-full"
+                        onClick={() => setArtisanField("idCardUrl", "")}
+                      >
+                        Remove ID image
+                      </Button>
+                    </div>
+                  )}
                 </Field>
                 <Field label="Portfolio/Work Photos">
                   <Input
@@ -451,26 +464,32 @@ function SignupPage() {
                   <p className="mt-1 text-xs text-muted-foreground">Up to 5 images, 1 MB each</p>
                 </Field>
                 {artisan.portfolioUrls.length > 0 && (
-                  <div className="sm:col-span-2 flex flex-wrap gap-2">
-                    {artisan.portfolioUrls.map((src, index) => (
-                      <button
-                        type="button"
-                        key={index}
-                        title="Remove photo"
-                        onClick={() =>
-                          setArtisanField(
-                            "portfolioUrls",
-                            artisan.portfolioUrls.filter((_, i) => i !== index),
-                          )
-                        }
-                      >
-                        <img
-                          src={src}
-                          alt={`Work ${index + 1}`}
-                          className="h-20 w-20 rounded-md object-cover"
-                        />
-                      </button>
-                    ))}
+                  <div className="sm:col-span-2">
+                    <p className="mb-2 text-sm font-medium">
+                      {artisan.portfolioUrls.length} work photo
+                      {artisan.portfolioUrls.length === 1 ? "" : "s"} selected
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {artisan.portfolioUrls.map((src, index) => (
+                        <button
+                          type="button"
+                          key={index}
+                          title="Remove photo"
+                          onClick={() =>
+                            setArtisanField(
+                              "portfolioUrls",
+                              artisan.portfolioUrls.filter((_, i) => i !== index),
+                            )
+                          }
+                        >
+                          <img
+                            src={src}
+                            alt={`Work ${index + 1}`}
+                            className="h-20 w-20 rounded-md object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </Section>

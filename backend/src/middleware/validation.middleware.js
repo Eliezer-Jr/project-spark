@@ -90,7 +90,6 @@ export function validateSignup(req, _res, next) {
     }
     if (req.body.role === "artisan") {
       const requiredFields = {
-        email: "Email address",
         gender: "Gender",
         dateOfBirth: "Date of birth",
         avatarUrl: "Profile photo",

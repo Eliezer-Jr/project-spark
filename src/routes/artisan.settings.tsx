@@ -75,9 +75,7 @@ function SettingsContent() {
               <Label>Phone</Label>
               <Input
                 value={form.phone}
-                onChange={(e) =>
-                  setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })
-                }
+                onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })}
                 placeholder="0241234567"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -113,6 +111,39 @@ function SettingsContent() {
             </div>
           </div>
         </div>
+        {(profile?.id_card_url || profile?.portfolio_urls.length) && (
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h2 className="font-semibold text-card-foreground">Documents & Work Portfolio</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your ID document is private. Work photos are visible to customers.
+            </p>
+            {profile.id_card_url && (
+              <div className="mt-4">
+                <Label>Uploaded ID Card</Label>
+                <img
+                  src={profile.id_card_url}
+                  alt="Uploaded ID card"
+                  className="mt-2 h-40 w-full rounded-lg border bg-muted/30 object-contain"
+                />
+              </div>
+            )}
+            {profile.portfolio_urls.length > 0 && (
+              <div className="mt-4">
+                <Label>Portfolio/Work Photos</Label>
+                <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {profile.portfolio_urls.map((photo, index) => (
+                    <img
+                      key={index}
+                      src={photo}
+                      alt={`Work sample ${index + 1}`}
+                      className="aspect-square w-full rounded-lg border object-cover"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <div className="rounded-xl border bg-card p-5 shadow-sm">
           <h2 className="font-semibold text-card-foreground">Notifications</h2>
           <p className="mt-1 text-sm text-muted-foreground">

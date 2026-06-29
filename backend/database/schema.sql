@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
   payment_account_name VARCHAR(150),
   momo_number VARCHAR(30),
   preferred_payment_method VARCHAR(50),
-  avatar_url VARCHAR(255),
+  avatar_url LONGTEXT,
   notify_email BOOLEAN NOT NULL DEFAULT TRUE,
   notify_sms BOOLEAN NOT NULL DEFAULT TRUE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,

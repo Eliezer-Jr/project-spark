@@ -90,10 +90,7 @@ function resolveLocationCoordinates(
 }
 
 function resolveArtisanCoordinates(artisan: Profile, geocoded: CoordinateLookup) {
-  if (
-    Number.isFinite(artisan.last_latitude) &&
-    Number.isFinite(artisan.last_longitude)
-  ) {
+  if (Number.isFinite(artisan.last_latitude) && Number.isFinite(artisan.last_longitude)) {
     return {
       lat: artisan.last_latitude as number,
       lng: artisan.last_longitude as number,
@@ -223,7 +220,8 @@ function BrowseContent() {
         db.from("service_records").select("*"),
         db.from("appointments").select("*"),
       ]);
-      const artisanIds = sharedArtisans?.map((artisan) => artisan.id) ??
+      const artisanIds =
+        sharedArtisans?.map((artisan) => artisan.id) ??
         ((rolesRes.data || []) as UserRole[]).map((r) => r.user_id);
       if (artisanIds.length > 0) {
         if (sharedArtisans) {
@@ -280,20 +278,12 @@ function BrowseContent() {
   }, [refreshToken]);
 
   useEffect(() => {
-    const interval = window.setInterval(
-      () => setRefreshToken((value) => value + 1),
-      10_000,
-    );
+    const interval = window.setInterval(() => setRefreshToken((value) => value + 1), 10_000);
     return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    const subscriptions = [
-      "profiles",
-      "feedback",
-      "service_records",
-      "appointments",
-    ].map((table) =>
+    const subscriptions = ["profiles", "feedback", "service_records", "appointments"].map((table) =>
       db.onTableChange(table as Parameters<typeof db.onTableChange>[0], () =>
         setRefreshToken((value) => value + 1),
       ),
@@ -422,7 +412,9 @@ function BrowseContent() {
       catFilter === "all" || a.specialization?.toLowerCase().includes(catFilter.toLowerCase());
     const hasLiveArtisanLocation = a.last_latitude != null && a.last_longitude != null;
     const matchRadius =
-      !userCoordinates || !hasLiveArtisanLocation || (a.distanceKm != null && a.distanceKm <= radiusKm);
+      !userCoordinates ||
+      !hasLiveArtisanLocation ||
+      (a.distanceKm != null && a.distanceKm <= radiusKm);
     return matchSearch && matchCat && matchRadius;
   });
 
@@ -615,7 +607,8 @@ function BrowseContent() {
                   )}
                   {selectedArtisan.last_location_at && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Last location update: {new Date(selectedArtisan.last_location_at).toLocaleString()}
+                      Last location update:{" "}
+                      {new Date(selectedArtisan.last_location_at).toLocaleString()}
                     </p>
                   )}
 
@@ -623,6 +616,22 @@ function BrowseContent() {
                     <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
                       {selectedArtisan.bio}
                     </p>
+                  )}
+
+                  {selectedArtisan.portfolio_urls.length > 0 && (
+                    <div className="mt-4">
+                      <p className="mb-2 text-sm font-medium text-foreground">Work portfolio</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {selectedArtisan.portfolio_urls.map((photo, index) => (
+                          <img
+                            key={`${selectedArtisan.id}-portfolio-${index}`}
+                            src={photo}
+                            alt={`${selectedArtisan.full_name} work sample ${index + 1}`}
+                            className="aspect-square w-full rounded-md border object-cover"
+                          />
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   <Link
