@@ -124,6 +124,11 @@ async function migrationAlreadyPresent(connection, filename) {
       return tableExists(connection, "quotes");
     case "010_enforce_unique_appointment_feedback.sql":
       return indexExists(connection, "feedback", "idx_feedback_appointment_customer_unique");
+    case "011_expand_artisan_profiles.sql":
+      return (
+        (await columnExists(connection, "users", "artisan_category")) &&
+        (await columnExists(connection, "users", "preferred_payment_method"))
+      );
     default:
       return false;
   }

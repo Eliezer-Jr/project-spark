@@ -6,16 +6,69 @@ interface Profile {
   id: string;
   full_name: string;
   phone: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  business_name: string | null;
+  artisan_category: string | null;
   location: string | null;
+  address: string | null;
+  region: string | null;
+  city: string | null;
+  digital_address: string | null;
   last_latitude: number | null;
   last_longitude: number | null;
   last_location_at: string | null;
   specialization: string | null;
+  years_experience: number | null;
   bio: string | null;
+  id_type: string | null;
+  id_number: string | null;
+  id_card_url: string | null;
+  portfolio_urls: string[];
+  price_range: string | null;
+  availability: string | null;
+  working_days: string[];
+  working_hours: string | null;
+  whatsapp_number: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  payment_account_name: string | null;
+  momo_number: string | null;
+  preferred_payment_method: string | null;
   avatar_url: string | null;
   notify_email: boolean;
   notify_sms: boolean;
   is_active: boolean;
+}
+
+export interface ArtisanSignupDetails {
+  location?: string;
+  specialization?: string;
+  bio?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  avatarUrl?: string;
+  businessName?: string;
+  artisanCategory?: string;
+  yearsExperience?: number;
+  address?: string;
+  region?: string;
+  city?: string;
+  digitalAddress?: string;
+  idType?: string;
+  idNumber?: string;
+  idCardUrl?: string;
+  portfolioUrls?: string[];
+  priceRange?: string;
+  availability?: string;
+  workingDays?: string[];
+  workingHours?: string;
+  whatsappNumber?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  paymentAccountName?: string;
+  momoNumber?: string;
+  preferredPaymentMethod?: string;
 }
 
 interface AuthContextType {
@@ -31,11 +84,7 @@ interface AuthContextType {
     fullName: string,
     role: AppRole,
     email?: string,
-    details?: {
-      location?: string;
-      specialization?: string;
-      bio?: string;
-    },
+    details?: ArtisanSignupDetails,
   ) => Promise<{ error: Error | null }>;
   signIn: (phone: string, otpcode: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -102,11 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fullName: string,
     selectedRole: AppRole,
     email?: string,
-    details?: {
-      location?: string;
-      specialization?: string;
-      bio?: string;
-    },
+    details?: ArtisanSignupDetails,
   ) => {
     const { error } = await db.auth.signUpWithOtp({
       phone,
@@ -119,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           location: details?.location,
           specialization: details?.specialization,
           bio: details?.bio,
+          ...details,
         },
       },
     });

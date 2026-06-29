@@ -8,10 +8,39 @@ function sanitizeUser(user) {
   const { passwordHash, ...safeUser } = user;
   return {
     ...safeUser,
+    portfolioUrls: parseJsonArray(safeUser.portfolioUrls),
+    workingDays: parseJsonArray(safeUser.workingDays),
     isActive: Boolean(safeUser.isActive),
     notifyEmail: Boolean(safeUser.notifyEmail),
     notifySms: Boolean(safeUser.notifySms),
   };
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function publicArtisan(user) {
+  const safe = sanitizeUser(user);
+  const {
+    passwordHash,
+    idType,
+    idNumber,
+    idCardUrl,
+    emergencyContactName,
+    emergencyContactPhone,
+    paymentAccountName,
+    momoNumber,
+    ...publicProfile
+  } = safe;
+  return publicProfile;
 }
 
 function toMySqlDateTime(value) {
@@ -20,6 +49,14 @@ function toMySqlDateTime(value) {
 }
 
 export const userService = {
+  async getPublicArtisans() {
+    const users = await userModel.findAll();
+    return sortBy(
+      users.filter((user) => user.role === "artisan" && Boolean(user.isActive)).map(publicArtisan),
+      "createdAt",
+      "desc",
+    );
+  },
   async getAllUsers(filters = {}) {
     const users = await userModel.findAll();
     let filtered = users;
@@ -73,9 +110,7 @@ export const userService = {
       lastLongitude:
         payload.lastLongitude == null ? payload.lastLongitude : Number(payload.lastLongitude),
       lastLocationAt:
-        payload.lastLocationAt === undefined
-          ? undefined
-          : toMySqlDateTime(payload.lastLocationAt),
+        payload.lastLocationAt === undefined ? undefined : toMySqlDateTime(payload.lastLocationAt),
       specialization:
         typeof payload.specialization === "string"
           ? payload.specialization.trim() || null

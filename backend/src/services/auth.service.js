@@ -13,8 +13,21 @@ function sanitizeUser(user) {
   const { passwordHash, ...safeUser } = user;
   return {
     ...safeUser,
+    portfolioUrls: parseJsonArray(safeUser.portfolioUrls),
+    workingDays: parseJsonArray(safeUser.workingDays),
     isActive: Boolean(safeUser.isActive),
   };
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function normalizePhone(phone) {
@@ -30,7 +43,9 @@ function normalizePhone(phone) {
 }
 
 function createPlaceholderEmail(phone) {
-  const safePhone = normalizePhone(phone).replace(/[^\d+]/g, "").replace(/^\+/, "");
+  const safePhone = normalizePhone(phone)
+    .replace(/[^\d+]/g, "")
+    .replace(/^\+/, "");
   return `${safePhone || createId()}@phone.artisancrm.local`;
 }
 
@@ -93,11 +108,15 @@ export const authService = {
     location,
     specialization,
     bio,
+    ...artisanDetails
   }) {
     const normalizedPhone = normalizePhone(phone);
     const normalizedEmail = email?.trim()?.toLowerCase() || null;
     if (!normalizedPhone || !otpcode?.trim() || !fullName?.trim()) {
-      throw new AppError("Full name, phone number and OTP code are required.", HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Full name, phone number and OTP code are required.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
     const existingUser = await userModel.findByPhone(normalizedPhone);
@@ -132,7 +151,34 @@ export const authService = {
       lastLocationAt: null,
       specialization: role === "artisan" ? specialization?.trim() || null : null,
       bio: bio?.trim() || null,
-      avatarUrl: null,
+      gender: role === "artisan" ? artisanDetails.gender : null,
+      dateOfBirth: role === "artisan" ? artisanDetails.dateOfBirth : null,
+      businessName: role === "artisan" ? artisanDetails.businessName?.trim() || null : null,
+      artisanCategory: role === "artisan" ? artisanDetails.artisanCategory?.trim() || null : null,
+      yearsExperience: role === "artisan" ? Number(artisanDetails.yearsExperience) : null,
+      address: role === "artisan" ? artisanDetails.address?.trim() || null : null,
+      region: role === "artisan" ? artisanDetails.region?.trim() || null : null,
+      city: role === "artisan" ? artisanDetails.city?.trim() || null : null,
+      digitalAddress: role === "artisan" ? artisanDetails.digitalAddress?.trim() || null : null,
+      idType: role === "artisan" ? artisanDetails.idType?.trim() || null : null,
+      idNumber: role === "artisan" ? artisanDetails.idNumber?.trim() || null : null,
+      idCardUrl: role === "artisan" ? artisanDetails.idCardUrl || null : null,
+      portfolioUrls: role === "artisan" ? artisanDetails.portfolioUrls || [] : [],
+      priceRange: role === "artisan" ? artisanDetails.priceRange?.trim() || null : null,
+      availability: role === "artisan" ? artisanDetails.availability?.trim() || null : null,
+      workingDays: role === "artisan" ? artisanDetails.workingDays || [] : [],
+      workingHours: role === "artisan" ? artisanDetails.workingHours?.trim() || null : null,
+      whatsappNumber: role === "artisan" ? normalizePhone(artisanDetails.whatsappNumber) : null,
+      emergencyContactName:
+        role === "artisan" ? artisanDetails.emergencyContactName?.trim() || null : null,
+      emergencyContactPhone:
+        role === "artisan" ? normalizePhone(artisanDetails.emergencyContactPhone) : null,
+      paymentAccountName:
+        role === "artisan" ? artisanDetails.paymentAccountName?.trim() || null : null,
+      momoNumber: role === "artisan" ? normalizePhone(artisanDetails.momoNumber) : null,
+      preferredPaymentMethod:
+        role === "artisan" ? artisanDetails.preferredPaymentMethod?.trim() || null : null,
+      avatarUrl: role === "artisan" ? artisanDetails.avatarUrl || null : null,
       notifyEmail: true,
       notifySms: true,
       isActive: true,

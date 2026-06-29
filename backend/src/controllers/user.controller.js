@@ -32,7 +32,7 @@ export async function getCurrentUser(req, res) {
 }
 
 export async function getArtisans(_req, res) {
-  const artisans = await userService.getAllUsers({ role: "artisan", isActive: true });
+  const artisans = await userService.getPublicArtisans();
   return sendResponse(res, HTTP_STATUS.OK, "Artisans fetched successfully.", artisans);
 }
 

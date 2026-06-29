@@ -89,7 +89,59 @@ export function validateSignup(req, _res, next) {
       ensureEnum(req.body.role, APP_ROLES, "Role must be admin, artisan or customer.");
     }
     if (req.body.role === "artisan") {
-      ensure(!isEmpty(req.body.specialization), "Artisan specialization is required.");
+      const requiredFields = {
+        email: "Email address",
+        gender: "Gender",
+        dateOfBirth: "Date of birth",
+        avatarUrl: "Profile photo",
+        businessName: "Business or workshop name",
+        artisanCategory: "Artisan category",
+        specialization: "Specific skill or service",
+        yearsExperience: "Years of experience",
+        address: "Location or address",
+        region: "Region",
+        city: "City or town",
+        digitalAddress: "Digital address",
+        idType: "ID type",
+        idNumber: "ID number",
+        idCardUrl: "ID card upload",
+        bio: "Service description",
+        priceRange: "Price range",
+        availability: "Availability",
+        workingHours: "Working hours",
+        whatsappNumber: "WhatsApp number",
+        emergencyContactName: "Emergency contact name",
+        emergencyContactPhone: "Emergency contact phone",
+        paymentAccountName: "Bank or MoMo account name",
+        momoNumber: "MoMo number",
+        preferredPaymentMethod: "Preferred payment method",
+      };
+      for (const [field, label] of Object.entries(requiredFields)) {
+        ensure(!isEmpty(req.body[field]), `${label} is required.`);
+      }
+      ensureDate(req.body.dateOfBirth, "Date of birth must be a valid date.");
+      ensureNonNegativeNumber(
+        req.body.yearsExperience,
+        "Years of experience must be zero or more.",
+      );
+      for (const field of ["whatsappNumber", "emergencyContactPhone", "momoNumber"]) {
+        ensurePhone(req.body[field], `${field} must be a valid phone number.`);
+      }
+      ensure(
+        Array.isArray(req.body.workingDays) && req.body.workingDays.length > 0,
+        "Select at least one working day.",
+      );
+      ensure(
+        Array.isArray(req.body.portfolioUrls) && req.body.portfolioUrls.length > 0,
+        "Upload at least one portfolio photo.",
+      );
+      ensure(req.body.portfolioUrls.length <= 5, "Upload no more than 5 portfolio photos.");
+      for (const image of [req.body.avatarUrl, req.body.idCardUrl, ...req.body.portfolioUrls]) {
+        ensure(
+          /^data:image\/[a-z0-9.+-]+;base64,/i.test(image),
+          "Uploads must be valid image files.",
+        );
+      }
     }
     next();
   } catch (error) {
@@ -334,7 +386,10 @@ export function validateMessage(req, _res, next) {
   try {
     ensure(!isEmpty(req.body?.recipientId), "Message recipient is required.");
     ensure(!isEmpty(req.body?.body), "Message cannot be empty.");
-    ensure(String(req.body.body).trim().length <= 2000, "Message must be 2,000 characters or less.");
+    ensure(
+      String(req.body.body).trim().length <= 2000,
+      "Message must be 2,000 characters or less.",
+    );
     if (isProvided(req.body.appointmentId)) {
       ensure(!isEmpty(req.body.appointmentId), "Appointment is required for this conversation.");
     }

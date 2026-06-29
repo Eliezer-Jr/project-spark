@@ -76,9 +76,32 @@ function mergeMissingById<T extends { id: string }>(rows: T[], seedRows: T[]): T
 function normalizeProfiles(rows: TableRow<"profiles">[]): TableRow<"profiles">[] {
   return rows.map((row) => ({
     ...row,
+    gender: row.gender ?? null,
+    date_of_birth: row.date_of_birth ?? null,
+    business_name: row.business_name ?? null,
+    artisan_category: row.artisan_category ?? null,
+    address: row.address ?? null,
+    region: row.region ?? null,
+    city: row.city ?? null,
+    digital_address: row.digital_address ?? null,
+    years_experience: row.years_experience ?? null,
+    id_type: row.id_type ?? null,
+    id_number: row.id_number ?? null,
+    id_card_url: row.id_card_url ?? null,
     last_latitude: row.last_latitude ?? null,
     last_longitude: row.last_longitude ?? null,
     last_location_at: row.last_location_at ?? null,
+    portfolio_urls: row.portfolio_urls ?? [],
+    working_days: row.working_days ?? [],
+    price_range: row.price_range ?? null,
+    availability: row.availability ?? null,
+    working_hours: row.working_hours ?? null,
+    whatsapp_number: row.whatsapp_number ?? null,
+    emergency_contact_name: row.emergency_contact_name ?? null,
+    emergency_contact_phone: row.emergency_contact_phone ?? null,
+    payment_account_name: row.payment_account_name ?? null,
+    momo_number: row.momo_number ?? null,
+    preferred_payment_method: row.preferred_payment_method ?? null,
     notify_email: row.notify_email ?? true,
     notify_sms: row.notify_sms ?? true,
   }));
@@ -281,12 +304,35 @@ interface BackendAuthUser {
   fullName: string;
   role: AppRole;
   phone: string | null;
+  gender: string | null;
+  dateOfBirth: string | null;
+  businessName: string | null;
+  artisanCategory: string | null;
   location: string | null;
+  address: string | null;
+  region: string | null;
+  city: string | null;
+  digitalAddress: string | null;
   lastLatitude: number | null;
   lastLongitude: number | null;
   lastLocationAt: string | null;
   specialization: string | null;
+  yearsExperience: number | null;
   bio: string | null;
+  idType: string | null;
+  idNumber: string | null;
+  idCardUrl: string | null;
+  portfolioUrls: string[];
+  priceRange: string | null;
+  availability: string | null;
+  workingDays: string[];
+  workingHours: string | null;
+  whatsappNumber: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  paymentAccountName: string | null;
+  momoNumber: string | null;
+  preferredPaymentMethod: string | null;
   avatarUrl: string | null;
   notifyEmail: boolean;
   notifySms: boolean;
@@ -428,12 +474,35 @@ function backendUserToProfile(user: BackendAuthUser): TableRow<"profiles"> {
     id: user.id,
     full_name: user.fullName,
     phone: normalizePhone(user.phone || ""),
+    gender: user.gender,
+    date_of_birth: user.dateOfBirth,
+    business_name: user.businessName,
+    artisan_category: user.artisanCategory,
     location: user.location,
+    address: user.address,
+    region: user.region,
+    city: user.city,
+    digital_address: user.digitalAddress,
     last_latitude: toFiniteNumber(user.lastLatitude),
     last_longitude: toFiniteNumber(user.lastLongitude),
     last_location_at: user.lastLocationAt,
     specialization: user.specialization,
+    years_experience: user.yearsExperience,
     bio: user.bio,
+    id_type: user.idType,
+    id_number: user.idNumber,
+    id_card_url: user.idCardUrl,
+    portfolio_urls: user.portfolioUrls ?? [],
+    price_range: user.priceRange,
+    availability: user.availability,
+    working_days: user.workingDays ?? [],
+    working_hours: user.workingHours,
+    whatsapp_number: user.whatsappNumber,
+    emergency_contact_name: user.emergencyContactName,
+    emergency_contact_phone: user.emergencyContactPhone,
+    payment_account_name: user.paymentAccountName,
+    momo_number: user.momoNumber,
+    preferred_payment_method: user.preferredPaymentMethod,
     avatar_url: user.avatarUrl,
     notify_email: user.notifyEmail,
     notify_sms: user.notifySms,
@@ -666,93 +735,95 @@ function createSeedState(): AppState {
       },
     ],
     tables: {
-      profiles: [
-        {
-          id: adminId,
-          full_name: "Admin User",
-          phone: "+233 20 000 0000",
-          location: "Accra",
-          last_latitude: 5.560014,
-          last_longitude: -0.205744,
-          last_location_at: createdAt,
-          specialization: null,
-          bio: "Platform administrator",
-          avatar_url: null,
-          notify_email: true,
-          notify_sms: true,
-          is_active: true,
-          created_at: createdAt,
-          updated_at: createdAt,
-        },
-        {
-          id: artisanId,
-          full_name: "Kojo Mensah",
-          phone: "+233 24 123 4567",
-          location: "Kumasi",
-          last_latitude: 6.6885,
-          last_longitude: -1.6244,
-          last_location_at: createdAt,
-          specialization: "Electrical",
-          bio: "Residential and small business electrical repairs.",
-          avatar_url: null,
-          notify_email: true,
-          notify_sms: true,
-          is_active: true,
-          created_at: createdAt,
-          updated_at: createdAt,
-        },
-        {
-          id: accraArtisanId,
-          full_name: "Esi Boateng",
-          phone: "+233 24 222 3311",
-          location: "Madina, Accra",
-          last_latitude: 5.6826,
-          last_longitude: -0.1645,
-          last_location_at: createdAt,
-          specialization: "Plumbing",
-          bio: "Leak repairs, bathroom fittings, and routine plumbing maintenance.",
-          avatar_url: null,
-          notify_email: true,
-          notify_sms: true,
-          is_active: true,
-          created_at: createdAt,
-          updated_at: createdAt,
-        },
-        {
-          id: temaArtisanId,
-          full_name: "Yaw Tetteh",
-          phone: "+233 27 444 1188",
-          location: "Tema",
-          last_latitude: 5.6698,
-          last_longitude: -0.0166,
-          last_location_at: createdAt,
-          specialization: "Carpentry",
-          bio: "Custom shelves, door repairs, and furniture assembly.",
-          avatar_url: null,
-          notify_email: true,
-          notify_sms: true,
-          is_active: true,
-          created_at: createdAt,
-          updated_at: createdAt,
-        },
-        {
-          id: customerId,
-          full_name: "Ama Owusu",
-          phone: "+233 55 987 6543",
-          location: "Accra",
-          last_latitude: 5.560014,
-          last_longitude: -0.205744,
-          last_location_at: createdAt,
-          specialization: null,
-          bio: null,
-          avatar_url: null,
-          notify_email: true,
-          notify_sms: true,
-          is_active: true,
-          created_at: createdAt,
-          updated_at: createdAt,
-        },
-      ],
+      profiles: (
+        [
+          {
+            id: adminId,
+            full_name: "Admin User",
+            phone: "+233 20 000 0000",
+            location: "Accra",
+            last_latitude: 5.560014,
+            last_longitude: -0.205744,
+            last_location_at: createdAt,
+            specialization: null,
+            bio: "Platform administrator",
+            avatar_url: null,
+            notify_email: true,
+            notify_sms: true,
+            is_active: true,
+            created_at: createdAt,
+            updated_at: createdAt,
+          },
+          {
+            id: artisanId,
+            full_name: "Kojo Mensah",
+            phone: "+233 24 123 4567",
+            location: "Kumasi",
+            last_latitude: 6.6885,
+            last_longitude: -1.6244,
+            last_location_at: createdAt,
+            specialization: "Electrical",
+            bio: "Residential and small business electrical repairs.",
+            avatar_url: null,
+            notify_email: true,
+            notify_sms: true,
+            is_active: true,
+            created_at: createdAt,
+            updated_at: createdAt,
+          },
+          {
+            id: accraArtisanId,
+            full_name: "Esi Boateng",
+            phone: "+233 24 222 3311",
+            location: "Madina, Accra",
+            last_latitude: 5.6826,
+            last_longitude: -0.1645,
+            last_location_at: createdAt,
+            specialization: "Plumbing",
+            bio: "Leak repairs, bathroom fittings, and routine plumbing maintenance.",
+            avatar_url: null,
+            notify_email: true,
+            notify_sms: true,
+            is_active: true,
+            created_at: createdAt,
+            updated_at: createdAt,
+          },
+          {
+            id: temaArtisanId,
+            full_name: "Yaw Tetteh",
+            phone: "+233 27 444 1188",
+            location: "Tema",
+            last_latitude: 5.6698,
+            last_longitude: -0.0166,
+            last_location_at: createdAt,
+            specialization: "Carpentry",
+            bio: "Custom shelves, door repairs, and furniture assembly.",
+            avatar_url: null,
+            notify_email: true,
+            notify_sms: true,
+            is_active: true,
+            created_at: createdAt,
+            updated_at: createdAt,
+          },
+          {
+            id: customerId,
+            full_name: "Ama Owusu",
+            phone: "+233 55 987 6543",
+            location: "Accra",
+            last_latitude: 5.560014,
+            last_longitude: -0.205744,
+            last_location_at: createdAt,
+            specialization: null,
+            bio: null,
+            avatar_url: null,
+            notify_email: true,
+            notify_sms: true,
+            is_active: true,
+            created_at: createdAt,
+            updated_at: createdAt,
+          },
+        ] as Array<Partial<TableRow<"profiles">>>
+      ).map((profile) => buildInsertedRow("profiles", profile)),
       user_roles: [
         { id: "role-admin", user_id: adminId, role: "admin" },
         { id: "role-artisan", user_id: artisanId, role: "artisan" },
@@ -893,7 +964,10 @@ function createSeedState(): AppState {
   };
 }
 
-function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow<T>>): TableRow<T> {
+function buildInsertedRow<T extends TableName>(
+  table: T,
+  input: Record<string, unknown>,
+): TableRow<T> {
   const timestamp = nowIso();
 
   switch (table) {
@@ -902,12 +976,35 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         id: (input.id as string) ?? createId("profile"),
         full_name: (input.full_name as string) ?? "New User",
         phone: (input.phone as string | null) ?? null,
+        gender: (input.gender as string | null) ?? null,
+        date_of_birth: (input.date_of_birth as string | null) ?? null,
+        business_name: (input.business_name as string | null) ?? null,
+        artisan_category: (input.artisan_category as string | null) ?? null,
         location: (input.location as string | null) ?? null,
+        address: (input.address as string | null) ?? null,
+        region: (input.region as string | null) ?? null,
+        city: (input.city as string | null) ?? null,
+        digital_address: (input.digital_address as string | null) ?? null,
         last_latitude: (input.last_latitude as number | null) ?? null,
         last_longitude: (input.last_longitude as number | null) ?? null,
         last_location_at: (input.last_location_at as string | null) ?? null,
         specialization: (input.specialization as string | null) ?? null,
+        years_experience: (input.years_experience as number | null) ?? null,
         bio: (input.bio as string | null) ?? null,
+        id_type: (input.id_type as string | null) ?? null,
+        id_number: (input.id_number as string | null) ?? null,
+        id_card_url: (input.id_card_url as string | null) ?? null,
+        portfolio_urls: (input.portfolio_urls as string[] | undefined) ?? [],
+        price_range: (input.price_range as string | null) ?? null,
+        availability: (input.availability as string | null) ?? null,
+        working_days: (input.working_days as string[] | undefined) ?? [],
+        working_hours: (input.working_hours as string | null) ?? null,
+        whatsapp_number: (input.whatsapp_number as string | null) ?? null,
+        emergency_contact_name: (input.emergency_contact_name as string | null) ?? null,
+        emergency_contact_phone: (input.emergency_contact_phone as string | null) ?? null,
+        payment_account_name: (input.payment_account_name as string | null) ?? null,
+        momo_number: (input.momo_number as string | null) ?? null,
+        preferred_payment_method: (input.preferred_payment_method as string | null) ?? null,
         avatar_url: (input.avatar_url as string | null) ?? null,
         notify_email: (input.notify_email as boolean | undefined) ?? true,
         notify_sms: (input.notify_sms as boolean | undefined) ?? true,
@@ -1150,7 +1247,7 @@ class MutationQueryBuilder<T extends TableName> implements PromiseLike<
 
       if (this.action === "delete") {
         const removed = tableRows.filter(matches);
-        state.tables[this.table] = tableRows.filter((row) => !matches(row)) as Tables[T]["Row"][];
+        (state.tables[this.table] as TableRow<T>[]) = tableRows.filter((row) => !matches(row));
         return { data: clone(removed), error: null };
       }
 
@@ -1169,7 +1266,7 @@ class MutationQueryBuilder<T extends TableName> implements PromiseLike<
         return nextRow;
       });
 
-      state.tables[this.table] = updated as Tables[T]["Row"][];
+      (state.tables[this.table] as TableRow<T>[]) = updated;
       const changedRows = updated.filter(matches);
       return { data: clone(changedRows), error: null };
     });
@@ -1260,6 +1357,30 @@ export const db = {
           location?: string;
           specialization?: string;
           bio?: string;
+          gender?: string;
+          dateOfBirth?: string;
+          avatarUrl?: string;
+          businessName?: string;
+          artisanCategory?: string;
+          yearsExperience?: number;
+          address?: string;
+          region?: string;
+          city?: string;
+          digitalAddress?: string;
+          idType?: string;
+          idNumber?: string;
+          idCardUrl?: string;
+          portfolioUrls?: string[];
+          priceRange?: string;
+          availability?: string;
+          workingDays?: string[];
+          workingHours?: string;
+          whatsappNumber?: string;
+          emergencyContactName?: string;
+          emergencyContactPhone?: string;
+          paymentAccountName?: string;
+          momoNumber?: string;
+          preferredPaymentMethod?: string;
         };
       };
     }): Promise<{ data: { user: AuthUser | null }; error: Error | null }> {
@@ -1276,6 +1397,30 @@ export const db = {
           location: options?.data?.location,
           specialization: options?.data?.specialization,
           bio: options?.data?.bio,
+          gender: options?.data?.gender,
+          dateOfBirth: options?.data?.dateOfBirth,
+          avatarUrl: options?.data?.avatarUrl,
+          businessName: options?.data?.businessName,
+          artisanCategory: options?.data?.artisanCategory,
+          yearsExperience: options?.data?.yearsExperience,
+          address: options?.data?.address,
+          region: options?.data?.region,
+          city: options?.data?.city,
+          digitalAddress: options?.data?.digitalAddress,
+          idType: options?.data?.idType,
+          idNumber: options?.data?.idNumber,
+          idCardUrl: options?.data?.idCardUrl,
+          portfolioUrls: options?.data?.portfolioUrls,
+          priceRange: options?.data?.priceRange,
+          availability: options?.data?.availability,
+          workingDays: options?.data?.workingDays,
+          workingHours: options?.data?.workingHours,
+          whatsappNumber: options?.data?.whatsappNumber,
+          emergencyContactName: options?.data?.emergencyContactName,
+          emergencyContactPhone: options?.data?.emergencyContactPhone,
+          paymentAccountName: options?.data?.paymentAccountName,
+          momoNumber: options?.data?.momoNumber,
+          preferredPaymentMethod: options?.data?.preferredPaymentMethod,
         });
         syncBackendUser(auth, "SIGNED_UP");
         return {
