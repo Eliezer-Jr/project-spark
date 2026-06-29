@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,7 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calendar as CalIcon } from "lucide-react";
+import { Plus, Calendar as CalIcon, FileText, LockKeyhole, MapPinCheck } from "lucide-react";
 import { toast } from "sonner";
 import { LiveServiceTracker } from "@/components/appointments/LiveServiceTracker";
 import { AppointmentProgress } from "@/components/appointments/AppointmentProgress";
@@ -44,6 +45,7 @@ import { formatDateLabel, formatTimeLabel, getStatusClasses } from "@/lib/crm-he
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Customer = Database["public"]["Tables"]["customers"]["Row"];
+type Quote = Database["public"]["Tables"]["quotes"]["Row"];
 
 export const Route = createFileRoute("/artisan/appointments")({
   component: () => (
@@ -59,6 +61,7 @@ function AppointmentsContent() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
@@ -70,16 +73,25 @@ function AppointmentsContent() {
     status: "pending",
   });
   const [filter, setFilter] = useState("all");
+  const [quoteAppointment, setQuoteAppointment] = useState<Appointment | null>(null);
+  const [quoteForm, setQuoteForm] = useState({
+    description: "",
+    amount: "",
+    deposit_amount: "",
+    valid_until: "",
+  });
 
   const load = async () => {
     if (!user) return;
     try {
-      const [serverAppointments, custRes] = await Promise.all([
+      const [serverAppointments, custRes, quoteRes] = await Promise.all([
         db.getMyAppointments(),
         db.from("customers").select("id, name").eq("artisan_id", user.id),
+        db.getMyQuotes(),
       ]);
       setAppointments(serverAppointments);
       setCustomers((custRes.data || []) as Customer[]);
+      setQuotes(quoteRes);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load appointments.");
     }
@@ -87,10 +99,13 @@ function AppointmentsContent() {
 
   useEffect(() => {
     void load();
-    const subscription = db.onTableChange("appointments", () => void load());
+    const subscriptions = [
+      db.onTableChange("appointments", () => void load()),
+      db.onTableChange("quotes", () => void load()),
+    ];
     const interval = window.setInterval(() => void load(), 10_000);
     return () => {
-      subscription.unsubscribe();
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
       window.clearInterval(interval);
     };
   }, [user]);
@@ -139,6 +154,53 @@ function AppointmentsContent() {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const openArrivalQuote = (appointment: Appointment) => {
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 7);
+    setQuoteForm({
+      description: appointment.description || "",
+      amount: "",
+      deposit_amount: "",
+      valid_until: validUntil.toISOString().slice(0, 10),
+    });
+    setQuoteAppointment(appointment);
+  };
+
+  const sendArrivalQuote = async () => {
+    if (!user || !quoteAppointment?.customer_user_id || !quoteForm.amount) return;
+    const amount = Number(quoteForm.amount);
+    const deposit = quoteForm.deposit_amount ? Number(quoteForm.deposit_amount) : null;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid quote amount.");
+      return;
+    }
+    if (deposit !== null && (!Number.isFinite(deposit) || deposit < 0 || deposit > amount)) {
+      toast.error("Deposit must be between zero and the total amount.");
+      return;
+    }
+
+    try {
+      await db.createQuote({
+        customer_id: quoteAppointment.customer_id,
+        customer_user_id: quoteAppointment.customer_user_id,
+        appointment_id: quoteAppointment.id,
+        title: quoteAppointment.title,
+        description: quoteForm.description.trim() || quoteAppointment.description,
+        amount,
+        deposit_amount: deposit,
+        status: "awaiting_response",
+        requested_changes: null,
+        valid_until: quoteForm.valid_until || null,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send quote.");
+      return;
+    }
+    toast.success("Quote sent to the customer");
+    setQuoteAppointment(null);
+    await load();
   };
 
   const filtered =
@@ -245,6 +307,7 @@ function AppointmentsContent() {
           {filtered.map((appt) => {
             const isSaving = savingId === appt.id;
             const canComplete = !appt.customer_user_id || appt.journey_status === "arrived";
+            const arrivalQuote = quotes.find((quote) => quote.appointment_id === appt.id);
             return (
               <div
                 key={appt.id}
@@ -297,6 +360,18 @@ function AppointmentsContent() {
                       onAppointmentChange={load}
                     />
                   )}
+                  {appt.status === "confirmed" &&
+                    appt.journey_status === "arrived" &&
+                    appt.customer_user_id &&
+                    (arrivalQuote ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
+                        <FileText className="h-3.5 w-3.5" /> Quote sent
+                      </span>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => openArrivalQuote(appt)}>
+                        <FileText className="mr-2 h-4 w-4" /> Send quote
+                      </Button>
+                    ))}
                   {appt.status === "confirmed" && (
                     <Button
                       size="sm"
@@ -313,7 +388,7 @@ function AppointmentsContent() {
                       <CheckCircle2 className="mr-2 h-4 w-4" /> Complete
                     </Button>
                   )}
-                  {(appt.status === "pending" || appt.status === "confirmed") && (
+                  {(appt.status === "pending" || appt.status === "confirmed") && !arrivalQuote && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -357,6 +432,12 @@ function AppointmentsContent() {
                       </AlertDialogContent>
                     </AlertDialog>
                   )}
+                  {arrivalQuote && appt.status !== "completed" && (
+                    <p className="flex w-full items-center justify-end gap-1.5 text-right text-xs text-muted-foreground">
+                      <LockKeyhole className="h-3.5 w-3.5 text-primary" /> Quote sent · cancellation
+                      locked
+                    </p>
+                  )}
                   {appt.status === "confirmed" && !canComplete && (
                     <p className="w-full text-right text-xs text-muted-foreground">
                       Confirm arrival before completing.
@@ -368,6 +449,87 @@ function AppointmentsContent() {
           })}
         </div>
       )}
+
+      <Dialog
+        open={Boolean(quoteAppointment)}
+        onOpenChange={(open) => !open && setQuoteAppointment(null)}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send an arrival quote</DialogTitle>
+          </DialogHeader>
+          {quoteAppointment && (
+            <div className="mt-2 space-y-4">
+              <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <MapPinCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <div>
+                  <p className="font-medium">Arrival confirmed</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {quoteAppointment.title} · This quote will be linked to this appointment.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <Label>Work and materials</Label>
+                <Textarea
+                  value={quoteForm.description}
+                  onChange={(event) =>
+                    setQuoteForm((current) => ({ ...current, description: event.target.value }))
+                  }
+                  className="mt-1 min-h-24"
+                  placeholder="Describe the confirmed scope, materials, and labour."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Total amount (GHS) *</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={quoteForm.amount}
+                    onChange={(event) =>
+                      setQuoteForm((current) => ({ ...current, amount: event.target.value }))
+                    }
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Deposit (optional)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={quoteForm.deposit_amount}
+                    onChange={(event) =>
+                      setQuoteForm((current) => ({
+                        ...current,
+                        deposit_amount: event.target.value,
+                      }))
+                    }
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Valid until</Label>
+                <Input
+                  type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={quoteForm.valid_until}
+                  onChange={(event) =>
+                    setQuoteForm((current) => ({ ...current, valid_until: event.target.value }))
+                  }
+                  className="mt-1"
+                />
+              </div>
+              <Button className="w-full" disabled={!quoteForm.amount} onClick={() => void sendArrivalQuote()}>
+                <FileText className="mr-2 h-4 w-4" /> Send quote to customer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

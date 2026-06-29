@@ -134,6 +134,7 @@ export interface Database {
           artisan_id: string;
           customer_id: string | null;
           customer_user_id: string | null;
+          appointment_id: string | null;
           title: string;
           description: string | null;
           amount: number;
@@ -146,8 +147,8 @@ export interface Database {
         };
         Insert: Omit<
           Database["public"]["Tables"]["quotes"]["Row"],
-          "id" | "created_at" | "updated_at"
-        >;
+          "id" | "created_at" | "updated_at" | "appointment_id"
+        > & { appointment_id?: string | null };
         Update: Partial<Database["public"]["Tables"]["quotes"]["Insert"]>;
       };
       work_requests: {

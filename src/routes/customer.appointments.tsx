@@ -33,7 +33,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Sparkles, XCircle, Clock3, RotateCcw, Star } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  Sparkles,
+  XCircle,
+  Clock3,
+  RotateCcw,
+  Star,
+  LockKeyhole,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/types/database";
 import { LiveServiceTracker } from "@/components/appointments/LiveServiceTracker";
@@ -54,6 +63,7 @@ import {
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Quote = Database["public"]["Tables"]["quotes"]["Row"];
 
 const appointmentSearchSchema = z.object({
   artisanId: z.string().optional(),
@@ -80,6 +90,7 @@ function CustAppointmentsContent() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [artisans, setArtisans] = useState<Profile[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
     artisan_id: "",
@@ -100,9 +111,10 @@ function CustAppointmentsContent() {
         .from("appointments")
         .select("*")
         .eq("customer_user_id", user.id);
-      const [serverAppointments, serverArtisans] = await Promise.all([
+      const [serverAppointments, serverArtisans, quoteRes] = await Promise.all([
         db.getMyAppointments(),
         db.getAvailableArtisans(),
+        db.getMyQuotes(),
       ]);
       const serverArtisanIds = new Set(serverArtisans.map((artisan) => artisan.id));
       const mergedAppointments = [...serverAppointments];
@@ -167,6 +179,7 @@ function CustAppointmentsContent() {
       setAppointments(mergedAppointments);
       setAllAppointments(mergedAppointments);
       setArtisans(serverArtisans);
+      setQuotes(quoteRes);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load appointments.");
     }
@@ -174,10 +187,13 @@ function CustAppointmentsContent() {
 
   useEffect(() => {
     void load();
-    const subscription = db.onTableChange("appointments", () => void load());
+    const subscriptions = [
+      db.onTableChange("appointments", () => void load()),
+      db.onTableChange("quotes", () => void load()),
+    ];
     const interval = window.setInterval(() => void load(), 10_000);
     return () => {
-      subscription.unsubscribe();
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
       window.clearInterval(interval);
     };
   }, [user]);
@@ -502,8 +518,10 @@ function CustAppointmentsContent() {
         <div className="space-y-3">
           {filteredAppointments.map((appointment) => {
             const artisan = artisans.find((item) => item.id === appointment.artisan_id);
+            const arrivalQuote = quotes.find((quote) => quote.appointment_id === appointment.id);
             const canCancel =
-              appointment.status === "pending" || appointment.status === "confirmed";
+              !arrivalQuote &&
+              (appointment.status === "pending" || appointment.status === "confirmed");
 
             return (
               <div key={appointment.id} className="rounded-xl border bg-card p-5 shadow-sm">
@@ -539,6 +557,18 @@ function CustAppointmentsContent() {
                       <p className="mt-3 text-sm text-card-foreground">{appointment.description}</p>
                     )}
                     <AppointmentProgress appointment={appointment} />
+                    {arrivalQuote && (
+                      <div className="mt-3 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+                        <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <div>
+                          <p className="font-medium text-foreground">Quote received</p>
+                          <p className="text-muted-foreground">
+                            Review, approve, and pay it in My Quotes. This appointment can no
+                            longer be cancelled.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">

@@ -120,6 +120,8 @@ async function migrationAlreadyPresent(connection, filename) {
       return tableExists(connection, "messages");
     case "008_scope_messages_to_appointments.sql":
       return columnExists(connection, "messages", "appointment_id");
+    case "009_create_quotes.sql":
+      return tableExists(connection, "quotes");
     default:
       return false;
   }

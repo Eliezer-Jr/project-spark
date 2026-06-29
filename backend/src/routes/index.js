@@ -8,6 +8,7 @@ import healthRoutes from "./health.routes.js";
 import messageRoutes from "./message.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import paymentRoutes from "./payment.routes.js";
+import quoteRoutes from "./quote.routes.js";
 import serviceCategoryRoutes from "./service-category.routes.js";
 import serviceRecordRoutes from "./service-record.routes.js";
 import systemRoutes from "./system.routes.js";
@@ -29,5 +30,6 @@ router.use("/feedback", feedbackRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/quotes", quoteRoutes);
 
 export default router;

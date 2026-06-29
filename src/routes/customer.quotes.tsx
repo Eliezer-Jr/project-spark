@@ -67,18 +67,14 @@ function CustomerQuotesContent() {
     if (!user) return;
 
     const [quoteRes, paymentRes] = await Promise.all([
-      db
-        .from("quotes")
-        .select("*")
-        .eq("customer_user_id", user.id)
-        .order("created_at", { ascending: false }),
+      db.getMyQuotes(),
       db
         .from("payments")
         .select("*")
         .eq("customer_user_id", user.id)
         .order("created_at", { ascending: false }),
     ]);
-    setQuotes((quoteRes.data || []) as Quote[]);
+    setQuotes(quoteRes);
     setPayments((paymentRes.data || []) as Payment[]);
   };
 
@@ -93,12 +89,13 @@ function CustomerQuotesContent() {
 
   const updateQuote = async (
     quoteId: string,
-    patch: Record<string, unknown>,
+    patch: Partial<Pick<Quote, "status" | "requested_changes">>,
     successMessage: string,
   ) => {
-    const { error } = await db.from("quotes").update(patch).eq("id", quoteId);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await db.updateQuote(quoteId, patch);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update quote.");
       return;
     }
 

@@ -2,6 +2,7 @@ import { MESSAGES } from "../constants/messages.js";
 import { HTTP_STATUS } from "../constants/http-status.js";
 import { AppError } from "../exceptions/AppError.js";
 import { appointmentModel } from "../models/appointment.model.js";
+import { quoteModel } from "../models/quote.model.js";
 import { appointmentService } from "../services/appointment.service.js";
 import { sendResponse } from "../utils/api-response.js";
 import { paginate } from "../utils/pagination.js";
@@ -58,6 +59,18 @@ export async function updateAppointment(req, res) {
   }
 
   const payload = { ...req.body };
+
+  if (payload.status === "cancelled") {
+    const linkedQuote = (await quoteModel.findAll()).find(
+      (quote) => quote.appointmentId === existing.id,
+    );
+    if (linkedQuote) {
+      throw new AppError(
+        "This appointment cannot be cancelled after a quote has been sent.",
+        HTTP_STATUS.CONFLICT,
+      );
+    }
+  }
 
   if (req.auth.role === "artisan") {
     payload.artisanId = req.auth.userId;

@@ -93,6 +93,10 @@ function normalizeAppointments(rows: TableRow<"appointments">[]): TableRow<"appo
   }));
 }
 
+function normalizeQuotes(rows: TableRow<"quotes">[]): TableRow<"quotes">[] {
+  return rows.map((row) => ({ ...row, appointment_id: row.appointment_id ?? null }));
+}
+
 function normalizeAuthUsers(
   rows: Partial<StoredAuthUser>[],
   profiles: TableRow<"profiles">[],
@@ -141,7 +145,9 @@ function normalizeState(state: Partial<AppState>): AppState {
       feedback: Array.isArray(state.tables?.feedback)
         ? state.tables.feedback
         : seed.tables.feedback,
-      quotes: Array.isArray(state.tables?.quotes) ? state.tables.quotes : seed.tables.quotes,
+      quotes: Array.isArray(state.tables?.quotes)
+        ? normalizeQuotes(state.tables.quotes)
+        : seed.tables.quotes,
       work_requests: Array.isArray(state.tables?.work_requests)
         ? state.tables.work_requests
         : seed.tables.work_requests,
@@ -312,6 +318,23 @@ interface BackendAppointment {
   updatedAt: string;
 }
 
+interface BackendQuote {
+  id: string;
+  artisanId: string;
+  customerId: string | null;
+  customerUserId: string;
+  appointmentId: string | null;
+  title: string;
+  description: string | null;
+  amount: number | string;
+  depositAmount: number | string | null;
+  status: TableRow<"quotes">["status"];
+  requestedChanges: string | null;
+  validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TrackingParty {
   id: string;
   fullName: string;
@@ -436,6 +459,37 @@ function cacheAppointments(appointments: BackendAppointment[]) {
       const index = state.tables.appointments.findIndex((item) => item.id === row.id);
       if (index >= 0) state.tables.appointments[index] = row;
       else state.tables.appointments.push(row);
+    });
+  });
+  return rows;
+}
+
+function backendQuoteToRow(quote: BackendQuote): TableRow<"quotes"> {
+  return buildInsertedRow("quotes", {
+    id: quote.id,
+    artisan_id: quote.artisanId,
+    customer_id: quote.customerId,
+    customer_user_id: quote.customerUserId,
+    appointment_id: quote.appointmentId,
+    title: quote.title,
+    description: quote.description,
+    amount: Number(quote.amount),
+    deposit_amount: quote.depositAmount == null ? null : Number(quote.depositAmount),
+    status: quote.status,
+    requested_changes: quote.requestedChanges,
+    valid_until: quote.validUntil?.slice(0, 10) || null,
+    created_at: quote.createdAt,
+    updated_at: quote.updatedAt,
+  });
+}
+
+function cacheQuotes(quotes: BackendQuote[]) {
+  const rows = quotes.map(backendQuoteToRow);
+  mutateState((state) => {
+    rows.forEach((row) => {
+      const index = state.tables.quotes.findIndex((item) => item.id === row.id);
+      if (index >= 0) state.tables.quotes[index] = row;
+      else state.tables.quotes.push(row);
     });
   });
   return rows;
@@ -757,6 +811,7 @@ function createSeedState(): AppState {
           artisan_id: artisanId,
           customer_id: customerRecordId,
           customer_user_id: customerId,
+          appointment_id: null,
           title: "Kitchen rewiring estimate",
           description: "Replace damaged socket points and install protective breakers.",
           amount: 850,
@@ -901,6 +956,7 @@ function buildInsertedRow<T extends TableName>(table: T, input: Partial<TableRow
         artisan_id: input.artisan_id as string,
         customer_id: (input.customer_id as string | null) ?? null,
         customer_user_id: (input.customer_user_id as string | null) ?? null,
+        appointment_id: (input.appointment_id as string | null) ?? null,
         title: input.title as string,
         description: (input.description as string | null) ?? null,
         amount: Number(input.amount ?? 0),
@@ -1284,6 +1340,68 @@ export const db = {
   async getMyAppointments() {
     const appointments = await authenticatedApi<BackendAppointment[]>("/appointments");
     return cacheAppointments(appointments);
+  },
+
+  async getMyQuotes() {
+    const quotes = await authenticatedApi<BackendQuote[]>("/quotes");
+    return cacheQuotes(quotes);
+  },
+
+  async createQuote(payload: {
+    customer_id?: string | null;
+    customer_user_id: string;
+    appointment_id?: string | null;
+    title: string;
+    description?: string | null;
+    amount: number;
+    deposit_amount?: number | null;
+    status?: TableRow<"quotes">["status"];
+    requested_changes?: string | null;
+    valid_until?: string | null;
+  }) {
+    const quote = await authenticatedApi<BackendQuote>("/quotes", {
+      method: "POST",
+      body: JSON.stringify({
+        customerId: payload.customer_id,
+        customerUserId: payload.customer_user_id,
+        appointmentId: payload.appointment_id,
+        title: payload.title,
+        description: payload.description,
+        amount: payload.amount,
+        depositAmount: payload.deposit_amount,
+        status: payload.status,
+        requestedChanges: payload.requested_changes,
+        validUntil: payload.valid_until,
+      }),
+    });
+    return cacheQuotes([quote])[0];
+  },
+
+  async updateQuote(
+    id: string,
+    payload: {
+      status?: TableRow<"quotes">["status"];
+      requested_changes?: string | null;
+      title?: string;
+      description?: string | null;
+      amount?: number;
+      deposit_amount?: number | null;
+      valid_until?: string | null;
+    },
+  ) {
+    const quote = await authenticatedApi<BackendQuote>(`/quotes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: payload.status,
+        requestedChanges: payload.requested_changes,
+        title: payload.title,
+        description: payload.description,
+        amount: payload.amount,
+        depositAmount: payload.deposit_amount,
+        validUntil: payload.valid_until,
+      }),
+    });
+    return cacheQuotes([quote])[0];
   },
 
   async getAppointmentTracking(id: string) {

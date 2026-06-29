@@ -43,11 +43,11 @@ function ArtisanQuotesContent() {
     if (!user) return;
 
     const [quoteRes, customerRes] = await Promise.all([
-      db.from("quotes").select("*").eq("artisan_id", user.id).order("created_at", { ascending: false }),
+      db.getMyQuotes(),
       db.from("customers").select("*").eq("artisan_id", user.id).order("name", { ascending: true }),
     ]);
 
-    setQuotes((quoteRes.data || []) as any[]);
+    setQuotes(quoteRes);
     setCustomers((customerRes.data || []) as any[]);
   };
 
@@ -69,21 +69,26 @@ function ArtisanQuotesContent() {
 
     const customer = customers.find((item) => item.id === form.customer_id);
 
-    const { error } = await db.from("quotes").insert({
-      artisan_id: user.id,
-      customer_id: form.customer_id,
-      customer_user_id: customer?.email === "customer@artisancrm.local" ? "user-customer" : null,
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      amount: Number(form.amount),
-      deposit_amount: form.deposit_amount ? Number(form.deposit_amount) : null,
-      status: form.status as any,
-      requested_changes: null,
-      valid_until: form.valid_until || null,
-    });
-
-    if (error) {
-      toast.error(error.message);
+    const customerUserId = customer?.email === "customer@artisancrm.local" ? "user-customer" : null;
+    if (!customerUserId) {
+      toast.error("Create this quote from a linked appointment so the customer can receive it.");
+      return;
+    }
+    try {
+      await db.createQuote({
+        customer_id: form.customer_id,
+        customer_user_id: customerUserId,
+        appointment_id: null,
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        amount: Number(form.amount),
+        deposit_amount: form.deposit_amount ? Number(form.deposit_amount) : null,
+        status: form.status as any,
+        requested_changes: null,
+        valid_until: form.valid_until || null,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create quote.");
       return;
     }
 
@@ -94,9 +99,10 @@ function ArtisanQuotesContent() {
   };
 
   const updateQuote = async (quoteId: string, patch: Record<string, unknown>, successMessage: string) => {
-    const { error } = await db.from("quotes").update(patch).eq("id", quoteId);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await db.updateQuote(quoteId, patch as any);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update quote.");
       return;
     }
 
