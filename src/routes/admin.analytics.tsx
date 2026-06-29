@@ -27,15 +27,15 @@ function AnalyticsContent() {
       const [rolesRes, apptRes, fbRes, svcRes, quoteRes, requestRes, paymentRes] = await Promise.all([
         db.from("user_roles").select("role"),
         db.from("appointments").select("status"),
-        db.from("feedback").select("rating"),
+        db.getPublicFeedback(),
         db.from("service_records").select("id", { count: "exact" }),
-        db.from("quotes").select("id", { count: "exact" }),
+        db.getMyQuotes(),
         db.from("work_requests").select("id", { count: "exact" }),
         db.from("payments").select("*"),
       ]);
       const roles = (rolesRes.data || []) as any[];
       const appts = (apptRes.data || []) as any[];
-      const fbs = (fbRes.data || []) as any[];
+      const fbs = fbRes;
       const payments = (paymentRes.data || []) as any[];
       const paidPayments = payments.filter((payment) => payment.status === "successful");
       const avg = fbs.length ? fbs.reduce((s: number, f: any) => s + f.rating, 0) / fbs.length : 0;
@@ -45,7 +45,7 @@ function AnalyticsContent() {
         totalAppts: appts.length,
         avgRating: Math.round(avg * 10) / 10,
         totalServices: svcRes.count || 0,
-        totalQuotes: quoteRes.count || 0,
+        totalQuotes: quoteRes.length,
         totalRequests: requestRes.count || 0,
         totalPayments: payments.length,
         paidRevenue: paidPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),

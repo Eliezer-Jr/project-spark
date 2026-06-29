@@ -3,7 +3,6 @@ import { z } from "zod";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ContactPanel } from "@/components/ContactPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/app-db";
 import { formatDateLabel } from "@/lib/crm-helpers";
@@ -75,23 +74,18 @@ function CustFeedbackContent() {
   const load = async () => {
     if (!user) return;
 
-    const [feedbackRes, appointmentRes, availableArtisans] = await Promise.all([
-      db
-        .from("feedback")
-        .select("*")
-        .eq("customer_user_id", user.id)
-        .order("created_at", { ascending: false }),
-      db
-        .from("appointments")
-        .select("*")
-        .eq("customer_user_id", user.id)
-        .eq("status", "completed")
-        .order("scheduled_date", { ascending: false }),
+    const [feedbackRows, appointmentRows, availableArtisans] = await Promise.all([
+      db.getMyFeedback(),
+      db.getMyAppointments(),
       db.getAvailableArtisans(),
     ]);
 
-    setFeedbacks((feedbackRes.data || []) as Feedback[]);
-    setCompletedAppointments((appointmentRes.data || []) as Appointment[]);
+    setFeedbacks(feedbackRows);
+    setCompletedAppointments(
+      appointmentRows
+        .filter((appointment) => appointment.status === "completed")
+        .sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date)),
+    );
     setArtisans(availableArtisans);
   };
 
@@ -134,16 +128,18 @@ function CustFeedbackContent() {
       rating: parseInt(form.rating, 10),
       comment: form.comment.trim() || null,
     };
-    const { error } = editingFeedbackId
-      ? await db.from("feedback").update(payload).eq("id", editingFeedbackId)
-      : await db.from("feedback").insert({
+    try {
+      if (editingFeedbackId) {
+        await db.updateFeedback(editingFeedbackId, payload);
+      } else {
+        await db.createFeedback({
           artisan_id: selectedAppointment.artisan_id,
-          customer_user_id: user.id,
           appointment_id: selectedAppointment.id,
           ...payload,
         });
-    if (error) {
-      toast.error(error.message);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save feedback.");
       return;
     }
 
@@ -171,8 +167,12 @@ function CustFeedbackContent() {
   };
 
   const deleteFeedback = async (id: string) => {
-    const { error } = await db.from("feedback").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await db.deleteFeedback(id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove feedback.");
+      return;
+    }
     toast.success("Feedback removed");
     await load();
   };
@@ -349,11 +349,6 @@ function CustFeedbackContent() {
                   <p className="mt-3 text-sm text-card-foreground">{feedback.comment}</p>
                 )}
                 <div className="mt-4 flex gap-2 border-t pt-3">
-                  <ContactPanel
-                    participantId={feedback.artisan_id}
-                    contextLabel={appointment?.title || "Completed service"}
-                    appointmentId={feedback.appointment_id || undefined}
-                  />
                   <Button
                     variant="ghost"
                     size="sm"

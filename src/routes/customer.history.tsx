@@ -38,19 +38,18 @@ function HistoryContent() {
 
   const load = async () => {
     if (!user) return;
-    const [appointmentRes, artisanProfiles, feedbackRes] = await Promise.all([
-      db
-        .from("appointments")
-        .select("*")
-        .eq("customer_user_id", user.id)
-        .eq("status", "completed")
-        .order("scheduled_date", { ascending: false }),
+    const [appointmentRows, artisanProfiles, feedbackRows] = await Promise.all([
+      db.getMyAppointments(),
       db.getAvailableArtisans(),
-      db.from("feedback").select("*").eq("customer_user_id", user.id),
+      db.getMyFeedback(),
     ]);
-    setAppointments((appointmentRes.data || []) as Appointment[]);
+    setAppointments(
+      appointmentRows
+        .filter((appointment) => appointment.status === "completed")
+        .sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date)),
+    );
     setArtisans(artisanProfiles);
-    setFeedbacks((feedbackRes.data || []) as Feedback[]);
+    setFeedbacks(feedbackRows);
   };
 
   useEffect(() => {

@@ -122,6 +122,8 @@ async function migrationAlreadyPresent(connection, filename) {
       return columnExists(connection, "messages", "appointment_id");
     case "009_create_quotes.sql":
       return tableExists(connection, "quotes");
+    case "010_enforce_unique_appointment_feedback.sql":
+      return indexExists(connection, "feedback", "idx_feedback_appointment_customer_unique");
     default:
       return false;
   }

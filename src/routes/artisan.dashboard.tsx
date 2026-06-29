@@ -50,12 +50,12 @@ function DashboardContent() {
         db.from("customers").select("id", { count: "exact" }).eq("artisan_id", user.id),
         db.from("appointments").select("*").eq("artisan_id", user.id).order("scheduled_date", { ascending: true }).limit(5),
         db.from("service_records").select("id", { count: "exact" }).eq("artisan_id", user.id),
-        db.from("feedback").select("rating").eq("artisan_id", user.id),
-        db.from("quotes").select("id", { count: "exact" }).eq("artisan_id", user.id),
+        db.getMyFeedback(),
+        db.getMyQuotes(),
         db.from("work_requests").select("id", { count: "exact" }).eq("artisan_id", user.id),
         db.from("payments").select("*").eq("artisan_id", user.id),
       ]);
-      const ratings = (fbRes.data || []) as any[];
+      const ratings = fbRes;
       const services = (svcRes.data || []) as any[];
       const appointments = (apptRes.data || []) as any[];
       const payments = (paymentRes.data || []) as any[];
@@ -70,7 +70,7 @@ function DashboardContent() {
         paid: successfulPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
         pendingPayments: payments.filter((payment) => payment.status === "pending").length,
         pending: appointments.filter((appointment: any) => appointment.status === "pending").length,
-        quotes: quoteRes.count || 0,
+        quotes: quoteRes.length,
         requests: requestRes.count || 0,
       });
       setRecentAppointments(appointments);

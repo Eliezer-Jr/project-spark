@@ -22,6 +22,11 @@ export async function getFeedback(req, res) {
   return sendResponse(res, HTTP_STATUS.OK, "Feedback fetched successfully.", result.data, result.meta);
 }
 
+export async function getPublicFeedback(_req, res) {
+  const feedback = await feedbackService.getFeedback();
+  return sendResponse(res, HTTP_STATUS.OK, "Public feedback fetched successfully.", feedback);
+}
+
 export async function createFeedback(req, res) {
   const payload = {
     ...req.body,

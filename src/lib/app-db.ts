@@ -335,6 +335,16 @@ interface BackendQuote {
   updatedAt: string;
 }
 
+interface BackendFeedback {
+  id: string;
+  artisanId: string;
+  customerUserId: string;
+  appointmentId: string | null;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+
 export interface TrackingParty {
   id: string;
   fullName: string;
@@ -490,6 +500,30 @@ function cacheQuotes(quotes: BackendQuote[]) {
       const index = state.tables.quotes.findIndex((item) => item.id === row.id);
       if (index >= 0) state.tables.quotes[index] = row;
       else state.tables.quotes.push(row);
+    });
+  });
+  return rows;
+}
+
+function backendFeedbackToRow(feedback: BackendFeedback): TableRow<"feedback"> {
+  return buildInsertedRow("feedback", {
+    id: feedback.id,
+    artisan_id: feedback.artisanId,
+    customer_user_id: feedback.customerUserId,
+    appointment_id: feedback.appointmentId,
+    rating: Number(feedback.rating),
+    comment: feedback.comment,
+    created_at: feedback.createdAt,
+  });
+}
+
+function cacheFeedback(feedback: BackendFeedback[]) {
+  const rows = feedback.map(backendFeedbackToRow);
+  mutateState((state) => {
+    rows.forEach((row) => {
+      const index = state.tables.feedback.findIndex((item) => item.id === row.id);
+      if (index >= 0) state.tables.feedback[index] = row;
+      else state.tables.feedback.push(row);
     });
   });
   return rows;
@@ -1402,6 +1436,49 @@ export const db = {
       }),
     });
     return cacheQuotes([quote])[0];
+  },
+
+  async getMyFeedback() {
+    const feedback = await authenticatedApi<BackendFeedback[]>("/feedback");
+    return cacheFeedback(feedback);
+  },
+
+  async getPublicFeedback() {
+    const feedback = await authenticatedApi<BackendFeedback[]>("/feedback/public");
+    return cacheFeedback(feedback);
+  },
+
+  async createFeedback(payload: {
+    artisan_id: string;
+    appointment_id: string;
+    rating: number;
+    comment?: string | null;
+  }) {
+    const feedback = await authenticatedApi<BackendFeedback>("/feedback", {
+      method: "POST",
+      body: JSON.stringify({
+        artisanId: payload.artisan_id,
+        appointmentId: payload.appointment_id,
+        rating: payload.rating,
+        comment: payload.comment,
+      }),
+    });
+    return cacheFeedback([feedback])[0];
+  },
+
+  async updateFeedback(id: string, payload: { rating?: number; comment?: string | null }) {
+    const feedback = await authenticatedApi<BackendFeedback>(`/feedback/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return cacheFeedback([feedback])[0];
+  },
+
+  async deleteFeedback(id: string) {
+    await authenticatedApi<BackendFeedback>(`/feedback/${id}`, { method: "DELETE" });
+    mutateState((state) => {
+      state.tables.feedback = state.tables.feedback.filter((item) => item.id !== id);
+    });
   },
 
   async getAppointmentTracking(id: string) {

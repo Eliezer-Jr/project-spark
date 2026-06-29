@@ -28,15 +28,15 @@ function CustomerDashContent() {
       const [apptRes, compRes, fbRes, quoteRes, requestRes] = await Promise.all([
         db.from("appointments").select("id", { count: "exact" }).eq("customer_user_id", user.id),
         db.from("appointments").select("id", { count: "exact" }).eq("customer_user_id", user.id).eq("status", "completed"),
-        db.from("feedback").select("id", { count: "exact" }).eq("customer_user_id", user.id),
-        db.from("quotes").select("id", { count: "exact" }).eq("customer_user_id", user.id),
+        db.getMyFeedback(),
+        db.getMyQuotes(),
         db.from("work_requests").select("id", { count: "exact" }).eq("customer_user_id", user.id),
       ]);
       setStats({
         appointments: apptRes.count || 0,
         completed: compRes.count || 0,
-        feedbacks: fbRes.count || 0,
-        quotes: quoteRes.count || 0,
+        feedbacks: fbRes.length,
+        quotes: quoteRes.length,
         requests: requestRes.count || 0,
       });
     };

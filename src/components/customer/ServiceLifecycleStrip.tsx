@@ -78,17 +78,17 @@ export function ServiceLifecycleStrip({ active }: { active: ServiceStage }) {
     const loadCounts = async () => {
       const [requests, quotes, appointments, feedback] = await Promise.all([
         db.from("work_requests").select("*").eq("customer_user_id", user.id),
-        db.from("quotes").select("*").eq("customer_user_id", user.id),
+        db.getMyQuotes(),
         db.from("appointments").select("*").eq("customer_user_id", user.id),
-        db.from("feedback").select("*").eq("customer_user_id", user.id),
+        db.getMyFeedback(),
       ]);
       const appointmentRows = appointments.data || [];
       setCounts({
         request: requests.data?.length || 0,
-        quote: quotes.data?.length || 0,
+        quote: quotes.length,
         appointment: appointmentRows.filter((item) => item.status !== "completed").length,
         history: appointmentRows.filter((item) => item.status === "completed").length,
-        feedback: feedback.data?.length || 0,
+        feedback: feedback.length,
       });
     };
 

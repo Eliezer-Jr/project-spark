@@ -22,10 +22,10 @@ function ActivityContent() {
     const load = async () => {
       const [apptRes, fbRes] = await Promise.all([
         db.from("appointments").select("*").order("created_at", { ascending: false }).limit(10),
-        db.from("feedback").select("*").order("created_at", { ascending: false }).limit(10),
+        db.getPublicFeedback(),
       ]);
       setRecentAppts((apptRes.data || []) as any[]);
-      setRecentFeedback((fbRes.data || []) as any[]);
+      setRecentFeedback(fbRes.slice(0, 10));
     };
     load();
   }, []);

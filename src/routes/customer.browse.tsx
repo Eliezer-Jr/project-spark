@@ -219,7 +219,7 @@ function BrowseContent() {
       const [rolesRes, catRes, feedbackRes, serviceRes, appointmentRes] = await Promise.all([
         db.from("user_roles").select("user_id").eq("role", "artisan"),
         db.from("service_categories").select("*"),
-        db.from("feedback").select("*"),
+        db.getPublicFeedback(),
         db.from("service_records").select("*"),
         db.from("appointments").select("*"),
       ]);
@@ -244,7 +244,7 @@ function BrowseContent() {
       const nextStats = artisanIds.reduce<
         Record<string, { rating: number; reviews: number; jobs: number; nextDate: string | null }>
       >((acc, artisanId) => {
-        const feedback = ((feedbackRes.data || []) as Feedback[]).filter(
+        const feedback = (feedbackRes as Feedback[]).filter(
           (item) => item.artisan_id === artisanId,
         );
         const jobs = ((serviceRes.data || []) as ServiceRecord[]).filter(
