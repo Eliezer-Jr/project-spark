@@ -18,6 +18,7 @@ import {
   X,
   FileText,
   Inbox,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const customerLinks = [
 const adminLinks = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/operations", label: "Operations", icon: BriefcaseBusiness },
   { to: "/admin/categories", label: "Categories", icon: FolderCog },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/activity", label: "Activity", icon: Activity },

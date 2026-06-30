@@ -29,6 +29,7 @@ import { Route as ArtisanDashboardRouteImport } from './routes/artisan.dashboard
 import { Route as ArtisanCustomersRouteImport } from './routes/artisan.customers'
 import { Route as ArtisanAppointmentsRouteImport } from './routes/artisan.appointments'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminOperationsRouteImport } from './routes/admin.operations'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -134,6 +135,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminOperationsRoute = AdminOperationsRouteImport.update({
+  id: '/admin/operations',
+  path: '/admin/operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/admin/dashboard',
   path: '/admin/dashboard',
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/operations': typeof AdminOperationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/artisan/appointments': typeof ArtisanAppointmentsRoute
   '/artisan/customers': typeof ArtisanCustomersRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/operations': typeof AdminOperationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/artisan/appointments': typeof ArtisanAppointmentsRoute
   '/artisan/customers': typeof ArtisanCustomersRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/operations': typeof AdminOperationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/artisan/appointments': typeof ArtisanAppointmentsRoute
   '/artisan/customers': typeof ArtisanCustomersRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/categories'
     | '/admin/dashboard'
+    | '/admin/operations'
     | '/admin/users'
     | '/artisan/appointments'
     | '/artisan/customers'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/categories'
     | '/admin/dashboard'
+    | '/admin/operations'
     | '/admin/users'
     | '/artisan/appointments'
     | '/artisan/customers'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/categories'
     | '/admin/dashboard'
+    | '/admin/operations'
     | '/admin/users'
     | '/artisan/appointments'
     | '/artisan/customers'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminOperationsRoute: typeof AdminOperationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ArtisanAppointmentsRoute: typeof ArtisanAppointmentsRoute
   ArtisanCustomersRoute: typeof ArtisanCustomersRoute
@@ -484,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/operations': {
+      id: '/admin/operations'
+      path: '/admin/operations'
+      fullPath: '/admin/operations'
+      preLoaderRoute: typeof AdminOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/dashboard': {
       id: '/admin/dashboard'
       path: '/admin/dashboard'
@@ -523,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminOperationsRoute: AdminOperationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   ArtisanAppointmentsRoute: ArtisanAppointmentsRoute,
   ArtisanCustomersRoute: ArtisanCustomersRoute,
